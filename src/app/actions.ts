@@ -90,6 +90,7 @@ export async function createDealer(formData: FormData) {
   }
 
   revalidatePath("/")
+  revalidatePath("/posibles-clientes")
 
   return { success: true } satisfies ActionResult
 }
@@ -118,6 +119,7 @@ export async function updateDealerContacted(id: string, contacted: boolean) {
   }
 
   revalidatePath("/")
+  revalidatePath("/posibles-clientes")
 
   return { success: true } satisfies ActionResult
 }
