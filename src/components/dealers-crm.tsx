@@ -1,6 +1,8 @@
 "use client"
 
 import { useMemo, useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import InputMask from "react-input-mask"
 
 import { createDealer, updateDealerContacted } from "@/app/actions"
 import { Badge } from "@/components/ui/badge"
@@ -47,8 +49,11 @@ function toWhatsAppUrl(phone: string) {
 }
 
 export function DealersCRM({ initialDealers }: DealersCRMProps) {
+  const router = useRouter()
   const [filterMode, setFilterMode] = useState<FilterMode>("all")
   const [search, setSearch] = useState("")
+  const [phoneInput, setPhoneInput] = useState("")
+  const [formError, setFormError] = useState("")
   const [isSubmitting, startSubmitting] = useTransition()
   const [isUpdating, startUpdating] = useTransition()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -98,17 +103,43 @@ export function DealersCRM({ initialDealers }: DealersCRMProps) {
             <form
               action={(formData) => {
                 startSubmitting(async () => {
-                  await createDealer(formData)
+                  setFormError("")
+                  const result = await createDealer(formData)
+
+                  if (!result.success) {
+                    setFormError(result.error ?? "Unable to save dealer.")
+                    return
+                  }
+
+                  setPhoneInput("")
                   setIsDialogOpen(false)
+                  router.refresh()
                 })
               }}
               className="grid gap-3"
             >
               <Input name="name" placeholder="Name" required />
               <Input name="businessType" placeholder="Business Type" required />
-              <Input name="contactPhone" placeholder="Phone" required />
+              <InputMask
+                mask="+1 (999) 999-9999"
+                value={phoneInput}
+                onChange={(event) => setPhoneInput(event.target.value)}
+              >
+                {(inputProps: React.InputHTMLAttributes<HTMLInputElement>) => (
+                  <Input
+                    {...inputProps}
+                    name="contactPhone"
+                    placeholder="+1 (809) 555-1234"
+                    required
+                  />
+                )}
+              </InputMask>
               <Input name="location" placeholder="Location" required />
               <Input name="companyType" placeholder="Company Type" required />
+
+              {formError ? (
+                <p className="text-sm text-destructive">{formError}</p>
+              ) : null}
 
               <DialogFooter>
                 <Button type="submit" disabled={isSubmitting}>
@@ -185,7 +216,14 @@ export function DealersCRM({ initialDealers }: DealersCRMProps) {
                         disabled={isUpdating}
                         onCheckedChange={(checked) => {
                           startUpdating(async () => {
-                            await updateDealerContacted(dealer.id, checked === true)
+                            const result = await updateDealerContacted(
+                              dealer.id,
+                              checked === true
+                            )
+
+                            if (result.success) {
+                              router.refresh()
+                            }
                           })
                         }}
                         aria-label={`Mark ${dealer.name} as contacted`}

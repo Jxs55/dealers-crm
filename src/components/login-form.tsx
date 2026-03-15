@@ -1,0 +1,80 @@
+"use client"
+
+import { FormEvent, useState, useTransition } from "react"
+import { signIn } from "next-auth/react"
+import { useRouter } from "next/navigation"
+
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+
+export function LoginForm() {
+  const router = useRouter()
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState("")
+  const [isPending, startTransition] = useTransition()
+
+  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    startTransition(async () => {
+      setError("")
+
+      const result = await signIn("credentials", {
+        email: email.trim().toLowerCase(),
+        password,
+        redirect: false,
+      })
+
+      if (!result || result.error) {
+        setError("Invalid email or password.")
+        return
+      }
+
+      router.push("/")
+      router.refresh()
+    })
+  }
+
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle>Sign in</CardTitle>
+        <CardDescription>
+          Log in to access your dealer pipeline.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={onSubmit} className="grid gap-3">
+          <Input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+          />
+          <Input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
+
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "Signing in..." : "Sign in"}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  )
+}
