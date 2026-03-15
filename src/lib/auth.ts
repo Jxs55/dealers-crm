@@ -6,7 +6,10 @@ import { redirect } from "next/navigation"
 
 import { prisma } from "@/lib/prisma"
 
+const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET
+
 export const authOptions: NextAuthOptions = {
+  secret: authSecret,
   session: {
     strategy: "jwt",
   },

@@ -1,5 +1,19 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Environment Variables
+
+For authentication in production (Railway), define these variables:
+
+- `DATABASE_URL`: PostgreSQL connection string
+- `AUTH_SECRET` (or `NEXTAUTH_SECRET`): random secret for NextAuth session encryption
+- `NEXTAUTH_URL`: public app URL (example: `https://your-app.up.railway.app`)
+
+Generate a strong auth secret with:
+
+```bash
+openssl rand -base64 32
+```
+
 ## Getting Started
 
 First, run the development server:

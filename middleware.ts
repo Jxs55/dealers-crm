@@ -1,6 +1,9 @@
 import { withAuth } from "next-auth/middleware"
 
+const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET
+
 export default withAuth({
+  secret: authSecret,
   pages: {
     signIn: "/login",
   },
