@@ -2,7 +2,6 @@
 
 import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import InputMask from "react-input-mask"
 
 import { createDealer, updateDealerContacted } from "@/app/actions"
 import { Badge } from "@/components/ui/badge"
@@ -46,6 +45,39 @@ type DealersCRMProps = {
 function toWhatsAppUrl(phone: string) {
   const normalizedPhone = phone.replace(/\D/g, "")
   return `https://wa.me/${normalizedPhone}?text=Hola`
+}
+
+function formatPhoneMask(value: string) {
+  const digitsOnly = value.replace(/\D/g, "").slice(0, 11)
+
+  if (digitsOnly.length === 0) {
+    return ""
+  }
+
+  const country = digitsOnly.slice(0, 1)
+  const area = digitsOnly.slice(1, 4)
+  const first = digitsOnly.slice(4, 7)
+  const second = digitsOnly.slice(7, 11)
+
+  let formatted = `+${country}`
+
+  if (area.length > 0) {
+    formatted += ` (${area}`
+  }
+
+  if (area.length === 3) {
+    formatted += ")"
+  }
+
+  if (first.length > 0) {
+    formatted += ` ${first}`
+  }
+
+  if (second.length > 0) {
+    formatted += `-${second}`
+  }
+
+  return formatted
 }
 
 export function DealersCRM({ initialDealers }: DealersCRMProps) {
@@ -120,20 +152,15 @@ export function DealersCRM({ initialDealers }: DealersCRMProps) {
             >
               <Input name="name" placeholder="Name" required />
               <Input name="businessType" placeholder="Business Type" required />
-              <InputMask
-                mask="+1 (999) 999-9999"
+              <Input
+                name="contactPhone"
+                placeholder="+1 (809) 555-1234"
                 value={phoneInput}
-                onChange={(event) => setPhoneInput(event.target.value)}
-              >
-                {(inputProps: React.InputHTMLAttributes<HTMLInputElement>) => (
-                  <Input
-                    {...inputProps}
-                    name="contactPhone"
-                    placeholder="+1 (809) 555-1234"
-                    required
-                  />
-                )}
-              </InputMask>
+                onChange={(event) =>
+                  setPhoneInput(formatPhoneMask(event.target.value))
+                }
+                required
+              />
               <Input name="location" placeholder="Location" required />
               <Input name="companyType" placeholder="Company Type" required />
 
