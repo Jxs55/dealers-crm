@@ -33,7 +33,7 @@ The application allows users to:
 
 Copilot MUST follow these principles when generating code.
 
-### 1. Clean Code
+### Clean Code
 
 Code must be:
 
@@ -80,41 +80,125 @@ Copilot must NOT:
 * create random folders
 * move core files without reason
 * mix UI logic with database logic
+* duplicate utilities that already exist
 
 ---
 
-# UI Rules
+# Mandatory shadcn/ui Usage
 
-All UI must use:
+All UI must use **shadcn/ui components** whenever possible.
 
-* **shadcn/ui components**
-* **TailwindCSS**
+Never create raw HTML UI components if a shadcn equivalent exists.
 
-Never create raw UI if a shadcn component exists.
-
-Use components like:
+Examples of required components:
 
 * Button
 * Input
 * Table
 * Dialog
+* Card
 * Badge
 * Select
 * Checkbox
+* Date Picker
+* Dropdown Menu
+* Form components
 
-UI must always be:
+Copilot should always prefer **existing shadcn primitives** instead of building custom UI.
+
+---
+
+# Mandatory MCP Usage (shadcn)
+
+This project includes the **shadcn MCP server**.
+
+Copilot MUST consult the **shadcn MCP documentation server** before generating any UI component.
+
+For every UI element such as:
+
+* buttons
+* forms
+* dialogs
+* date pickers
+* tables
+* dropdowns
+* inputs
+* cards
+* layouts
+
+Copilot should:
+
+1. Query the **shadcn MCP server**
+2. Follow the **official shadcn component structure**
+3. Use **correct imports from `/components/ui`**
+
+Example imports:
+
+```tsx
+import { Button } from "@/components/ui/button"
+import { Dialog } from "@/components/ui/dialog"
+import { Table } from "@/components/ui/table"
+```
+
+Copilot must NOT invent custom UI components if a shadcn component exists.
+
+---
+
+# Mobile-First Responsive Design (MANDATORY)
+
+All UI must follow **mobile-first design principles**.
+
+Rules:
+
+* Start layout design for **mobile screens first**
+* Then progressively enhance for **tablet and desktop**
+
+Use Tailwind responsive utilities like:
+
+* `sm:`
+* `md:`
+* `lg:`
+* `xl:`
+
+Examples:
+
+* stack layouts on mobile
+* grid layouts on desktop
+* tables should scroll horizontally on small screens
+
+Tables must support:
+
+```css
+overflow-x-auto
+```
+
+Forms and dialogs must remain usable on **small mobile screens**.
+
+---
+
+# UI Design Guidelines
+
+The UI must always be:
 
 * responsive
-* mobile friendly
+* mobile-friendly
 * accessible
+* minimal
+* modern
 
-Prefer:
+Use Tailwind utilities for layout:
 
 * flex
 * grid
-* container layouts
+* gap
+* container
+* padding
+* margin
 
-Spacing must follow Tailwind conventions.
+Avoid:
+
+* inline styles
+* custom CSS unless strictly necessary
 
 ---
 
@@ -221,41 +305,6 @@ Design should remain:
 
 ---
 
-# Responsiveness
-
-All UI must work properly on:
-
-* mobile
-* tablet
-* desktop
-
-Tables should support horizontal scrolling on mobile.
-
-Dialogs and forms must adapt to small screens.
-
----
-
-# Code Consistency
-
-Copilot must follow:
-
-* consistent naming conventions
-* TypeScript typing
-* predictable folder structure
-
-Naming examples:
-
-DealerTable
-DealerForm
-DealerFilters
-WhatsappButton
-
-Use camelCase for variables and functions.
-
-Use PascalCase for components.
-
----
-
 # Performance
 
 Prefer:
@@ -318,6 +367,13 @@ When generating code, Copilot should:
 * prefer extending existing code over replacing it
 
 If a feature already exists, Copilot should extend it rather than rebuild it.
+
+Copilot must prioritize:
+
+1. shadcn components
+2. mobile-first responsive layouts
+3. clean architecture
+4. maintainable code
 
 ---
 
