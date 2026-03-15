@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { Prisma } from "@prisma/client"
 
 import { getSession } from "@/lib/auth"
-import { sanitizePhoneNumber } from "@/lib/phone"
+import { isValidDominicanPhone, sanitizePhone } from "@/lib/phone"
 import { prisma } from "@/lib/prisma"
 
 type ActionResult = {
@@ -24,7 +24,7 @@ export async function createDealer(formData: FormData) {
   const contactPhoneRaw = String(formData.get("contactPhone") ?? "").trim()
   const location = String(formData.get("location") ?? "").trim()
   const companyType = String(formData.get("companyType") ?? "").trim()
-  const contactPhone = sanitizePhoneNumber(contactPhoneRaw)
+  const contactPhone = sanitizePhone(contactPhoneRaw)
 
   if (!name) {
     return { success: false, error: "Name is required." } satisfies ActionResult
@@ -32,6 +32,13 @@ export async function createDealer(formData: FormData) {
 
   if (!contactPhone) {
     return { success: false, error: "Contact phone is required." } satisfies ActionResult
+  }
+
+  if (!isValidDominicanPhone(contactPhoneRaw)) {
+    return {
+      success: false,
+      error: "Phone must be a valid Dominican number.",
+    } satisfies ActionResult
   }
 
   if (!businessType || !location || !companyType) {

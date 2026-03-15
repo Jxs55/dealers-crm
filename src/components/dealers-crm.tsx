@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
 import { createDealer, updateDealerContacted } from "@/app/actions"
+import { Field, FieldError, FieldLabel } from "@/components/ui/field"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -25,6 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { formatPhoneDisplay, isValidDominicanPhone, sanitizePhone } from "@/lib/phone"
 
 type Dealer = {
   id: string
@@ -47,44 +49,12 @@ function toWhatsAppUrl(phone: string) {
   return `https://wa.me/${normalizedPhone}?text=Hola`
 }
 
-function formatPhoneMask(value: string) {
-  const digitsOnly = value.replace(/\D/g, "").slice(0, 11)
-
-  if (digitsOnly.length === 0) {
-    return ""
-  }
-
-  const country = digitsOnly.slice(0, 1)
-  const area = digitsOnly.slice(1, 4)
-  const first = digitsOnly.slice(4, 7)
-  const second = digitsOnly.slice(7, 11)
-
-  let formatted = `+${country}`
-
-  if (area.length > 0) {
-    formatted += ` (${area}`
-  }
-
-  if (area.length === 3) {
-    formatted += ")"
-  }
-
-  if (first.length > 0) {
-    formatted += ` ${first}`
-  }
-
-  if (second.length > 0) {
-    formatted += `-${second}`
-  }
-
-  return formatted
-}
-
 export function DealersCRM({ initialDealers }: DealersCRMProps) {
   const router = useRouter()
   const [filterMode, setFilterMode] = useState<FilterMode>("all")
   const [search, setSearch] = useState("")
   const [phoneInput, setPhoneInput] = useState("")
+  const [phoneError, setPhoneError] = useState("")
   const [formError, setFormError] = useState("")
   const [isSubmitting, startSubmitting] = useTransition()
   const [isUpdating, startUpdating] = useTransition()
@@ -136,6 +106,26 @@ export function DealersCRM({ initialDealers }: DealersCRMProps) {
               action={(formData) => {
                 startSubmitting(async () => {
                   setFormError("")
+                  setPhoneError("")
+
+                  const phoneValue = String(formData.get("contactPhone") ?? "")
+                  const sanitizedPhone = sanitizePhone(phoneValue)
+
+                  if (!sanitizedPhone) {
+                    setPhoneError("Phone is required.")
+                    return
+                  }
+
+                  if (sanitizedPhone.length < 10) {
+                    setPhoneError("Phone must contain at least 10 digits.")
+                    return
+                  }
+
+                  if (!isValidDominicanPhone(phoneValue)) {
+                    setPhoneError("Phone must be a valid Dominican number.")
+                    return
+                  }
+
                   const result = await createDealer(formData)
 
                   if (!result.success) {
@@ -152,15 +142,24 @@ export function DealersCRM({ initialDealers }: DealersCRMProps) {
             >
               <Input name="name" placeholder="Name" required />
               <Input name="businessType" placeholder="Business Type" required />
-              <Input
-                name="contactPhone"
-                placeholder="+1 (809) 555-1234"
-                value={phoneInput}
-                onChange={(event) =>
-                  setPhoneInput(formatPhoneMask(event.target.value))
-                }
-                required
-              />
+              <Field>
+                <FieldLabel htmlFor="contactPhone">Phone</FieldLabel>
+                <Input
+                  id="contactPhone"
+                  name="contactPhone"
+                  placeholder="+1 809 555 1234"
+                  value={phoneInput}
+                  onChange={(event) => {
+                    setPhoneInput(formatPhoneDisplay(event.target.value))
+                    if (phoneError) {
+                      setPhoneError("")
+                    }
+                  }}
+                  inputMode="tel"
+                  required
+                />
+                <FieldError>{phoneError}</FieldError>
+              </Field>
               <Input name="location" placeholder="Location" required />
               <Input name="companyType" placeholder="Company Type" required />
 
