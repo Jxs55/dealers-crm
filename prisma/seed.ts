@@ -15,30 +15,34 @@ const prisma = new PrismaClient({ adapter })
 
 async function main() {
   const hashedPassword = await hash("1234", 12)
+  const seededUserIds = ["ds", "jxs"]
 
   const users = [
     {
+      id: "ds",
       name: "ds",
-      email: "ds",
+      email: "ds@gmail.com",
       password: hashedPassword,
     },
     {
+      id: "jxs",
       name: "jxs",
-      email: "jxs",
+      email: "jxs@gmail.com",
       password: hashedPassword,
     },
   ]
 
-  for (const user of users) {
-    await prisma.user.upsert({
-      where: { email: user.email },
-      update: {
-        name: user.name,
-        password: user.password,
+  await prisma.user.deleteMany({
+    where: {
+      id: {
+        in: seededUserIds,
       },
-      create: user,
-    })
-  }
+    },
+  })
+
+  await prisma.user.createMany({
+    data: users,
+  })
 
   console.log("Seed completed: users ds and jxs are ready.")
 }

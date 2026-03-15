@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input"
 
 export function LoginForm() {
   const router = useRouter()
-  const [email, setEmail] = useState("")
+  const [id, setId] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isPending, startTransition] = useTransition()
@@ -28,13 +28,13 @@ export function LoginForm() {
       setError("")
 
       const result = await signIn("credentials", {
-        email: email.trim().toLowerCase(),
+        id: id.trim(),
         password,
         redirect: false,
       })
 
       if (!result || result.error) {
-        setError("Invalid email or password.")
+        setError("Invalid ID or password.")
         return
       }
 
@@ -54,10 +54,10 @@ export function LoginForm() {
       <CardContent>
         <form onSubmit={onSubmit} className="grid gap-3">
           <Input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            type="text"
+            placeholder="ID"
+            value={id}
+            onChange={(event) => setId(event.target.value)}
             required
           />
           <Input
