@@ -75,6 +75,10 @@ export function ProspectDetailDialog({
   }
 
   function startEditing() {
+    if (!prospect) {
+      return
+    }
+
     setFormValues({
       id: prospect.id,
       name: prospect.name,
