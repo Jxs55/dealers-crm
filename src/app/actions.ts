@@ -92,7 +92,7 @@ export async function createDealer(formData: FormData) {
         contactPhone,
         location,
         companyType,
-        
+        createdById: session.user.id,
       },
     })
   } catch (error) {
@@ -424,7 +424,7 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
         contactPhone: sanitizePhone(row.contactPhoneRaw),
         location: row.location,
         companyType: row.companyType,
-        
+        createdById: session.user.id,
       })),
       skipDuplicates: true,
     })
@@ -471,7 +471,7 @@ export async function createMessageTemplate(input: MessageTemplateInput) {
       data: {
         name,
         messageTemplate,
-        
+        createdById: session.user.id,
       },
       select: { id: true },
     })
