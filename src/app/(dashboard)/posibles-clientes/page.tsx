@@ -10,13 +10,13 @@ export default async function PosiblesClientesPage() {
   const [prospects, templates] = await Promise.all([
     prisma.dealer.findMany({
       where: {
-        createdById: user.id,
+        
       },
       orderBy: { createdAt: "desc" },
     }),
     prisma.messageTemplate.findMany({
       where: {
-        createdById: user.id,
+        
       },
       orderBy: { createdAt: "desc" },
       select: {

@@ -58,7 +58,7 @@ export async function POST(request: Request) {
 
   const existing = await prisma.dealer.findMany({
     where: {
-      createdById: session.user.id,
+      
       OR: [
         {
           contactPhone: {
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
         contacted: ["activo", "contactado", "active", "contacted"].includes(
           row.status
         ),
-        createdById: session.user.id,
+        
       })),
       skipDuplicates: true,
     })

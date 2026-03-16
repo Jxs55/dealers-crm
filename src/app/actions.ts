@@ -73,10 +73,7 @@ export async function createDealer(formData: FormData) {
 
   const duplicate = await prisma.dealer.findUnique({
     where: {
-      createdById_contactPhone: {
-        createdById: session.user.id,
-        contactPhone,
-      },
+      contactPhone,
     },
   })
 
@@ -95,7 +92,7 @@ export async function createDealer(formData: FormData) {
         contactPhone,
         location,
         companyType,
-        createdById: session.user.id,
+        
       },
     })
   } catch (error) {
@@ -135,7 +132,7 @@ export async function updateDealerContacted(id: string, contacted: boolean) {
   const result = await prisma.dealer.updateMany({
     where: {
       id,
-      createdById: session.user.id,
+      
     },
     data: { contacted },
   })
@@ -201,7 +198,7 @@ export async function updateDealer(input: UpdateDealerInput) {
 
   const duplicate = await prisma.dealer.findFirst({
     where: {
-      createdById: session.user.id,
+      
       contactPhone,
       id: {
         not: id,
@@ -220,7 +217,7 @@ export async function updateDealer(input: UpdateDealerInput) {
   const result = await prisma.dealer.updateMany({
     where: {
       id,
-      createdById: session.user.id,
+      
     },
     data: {
       name,
@@ -255,7 +252,7 @@ export async function deleteDealer(id: string) {
   const result = await prisma.dealer.deleteMany({
     where: {
       id,
-      createdById: session.user.id,
+      
     },
   })
 
@@ -353,7 +350,7 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
 
     const existing = await tx.dealer.findMany({
       where: {
-        createdById: session.user.id,
+        
         OR: [
           {
             contactPhone: {
@@ -427,7 +424,7 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
         contactPhone: sanitizePhone(row.contactPhoneRaw),
         location: row.location,
         companyType: row.companyType,
-        createdById: session.user.id,
+        
       })),
       skipDuplicates: true,
     })
@@ -474,7 +471,7 @@ export async function createMessageTemplate(input: MessageTemplateInput) {
       data: {
         name,
         messageTemplate,
-        createdById: session.user.id,
+        
       },
       select: { id: true },
     })
@@ -534,7 +531,7 @@ export async function updateMessageTemplate(input: MessageTemplateInput) {
     const result = await prisma.messageTemplate.updateMany({
       where: {
         id,
-        createdById: session.user.id,
+        
       },
       data: {
         name,
@@ -585,7 +582,7 @@ export async function deleteMessageTemplate(id: string) {
   const result = await prisma.messageTemplate.deleteMany({
     where: {
       id,
-      createdById: session.user.id,
+      
     },
   })
 
@@ -615,7 +612,7 @@ export async function updateDealerStatusForWhatsApp(input: WhatsAppStatusInput) 
   const result = await prisma.dealer.updateMany({
     where: {
       id: input.dealerId,
-      createdById: session.user.id,
+      
     },
     data: {
       contacted,
@@ -630,4 +627,27 @@ export async function updateDealerStatusForWhatsApp(input: WhatsAppStatusInput) 
   revalidatePath("/posibles-clientes")
 
   return { success: true } satisfies ActionResult
+}
+
+export async function deleteMultipleDealers(ids: string[]): Promise<ActionResult> {
+  const session = await getSession()
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Unauthorized" }
+  }
+
+  try {
+    await prisma.dealer.deleteMany({
+      where: {
+        id: { in: ids }
+      }
+    })
+    
+    revalidatePath("/(dashboard)/posibles-clientes", "page")
+    revalidatePath("/(dashboard)/clientes-activos", "page")
+    return { success: true }
+  } catch (error) {
+    console.error("Failed to delete dealers:", error)
+    return { success: false, error: "Error eliminando prospectos" }
+  }
 }

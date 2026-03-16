@@ -35,7 +35,7 @@ model Dealer {
   createdById  String
   createdBy    User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
 
-  @@unique([createdById, contactPhone])
+  @@unique([contactPhone])
 }
 
 model MessageTemplate {
@@ -47,5 +47,5 @@ model MessageTemplate {
   createdById     String
   createdBy       User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
 
-  @@unique([createdById, name])
+  @@unique([name])
 }

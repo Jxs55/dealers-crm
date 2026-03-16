@@ -9,7 +9,7 @@ export default async function MessageTemplatesPage() {
 
   const templates = await prisma.messageTemplate.findMany({
     where: {
-      createdById: user.id,
+      
     },
     orderBy: { createdAt: "desc" },
     select: {

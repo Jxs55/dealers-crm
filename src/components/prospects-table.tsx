@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
-import { updateDealerContacted } from "@/app/actions"
+import { updateDealerContacted, deleteMultipleDealers } from "@/app/actions"
 import { ProspectDetailDialog } from "@/components/prospect-detail-dialog"
 import { ProspectsExportDialog } from "@/components/prospects-export-dialog"
 import { ProspectForm } from "@/components/prospect-form"
@@ -22,6 +22,9 @@ import {
 } from "@/components/ui/table"
 import type { MessageTemplate } from "@/types/message-template"
 import type { Prospect } from "@/types/prospect"
+import { toast } from "sonner"
+import { AutoRefresh } from "./auto-refresh"
+import { Trash2 } from "lucide-react"
 
 type FilterMode = "all" | "contacted" | "not-contacted"
 
@@ -37,6 +40,8 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
   const [isUpdating, startUpdating] = useTransition()
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [isDeleting, startDeleting] = useTransition()
 
   const filteredProspects = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
@@ -55,11 +60,51 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
     })
   }, [filterMode, prospects, search])
 
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredProspects.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(filteredProspects.map((p) => p.id)))
+    }
+  }
+
+  const toggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds)
+    if (newSelected.has(id)) {
+      newSelected.delete(id)
+    } else {
+      newSelected.add(id)
+    }
+    setSelectedIds(newSelected)
+  }
+
+  const handleDeleteSelected = () => {
+    if (selectedIds.size === 0) return
+    const confirm = window.confirm(`¿Estás seguro de eliminar ${selectedIds.size} prospecto(s)?`)
+    if (!confirm) return
+
+    startDeleting(async () => {
+      const result = await deleteMultipleDealers(Array.from(selectedIds))
+      if (result.success) {
+        toast.success(`${selectedIds.size} prospecto(s) eliminado(s)`)
+        setSelectedIds(new Set())
+        router.refresh()
+      } else {
+        toast.error(result.error || "Error al eliminar")
+      }
+    })
+  }
+
   const filterButtonStyle = (mode: FilterMode) =>
     mode === filterMode ? "default" : "outline"
 
+  const selectedProspectsData = useMemo(() => {
+    return prospects.filter(p => selectedIds.has(p.id))
+  }, [prospects, selectedIds])
+
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 md:p-6">
+      <AutoRefresh interval={5000} />
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Posibles Clientes</h1>
@@ -67,11 +112,26 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
             Gestiona prospectos que podrían contratar tu ERP.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <ProspectsImportDialog />
-          <ProspectsExportDialog prospects={filteredProspects} />
-          <ProspectForm />
-        </div>
+        
+        {selectedIds.size > 0 ? (
+          <div className="flex flex-wrap items-center gap-2 animate-in fade-in zoom-in p-2 bg-muted/50 rounded-lg border">
+            <span className="text-sm px-2 font-medium">{selectedIds.size} seleccionados</span>
+            <Button variant="destructive" size="sm" onClick={handleDeleteSelected} disabled={isDeleting}>
+              <Trash2 className="w-4 h-4 mr-1" />
+              Eliminar
+            </Button>
+            <ProspectsExportDialog prospects={selectedProspectsData} />
+            <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
+              Cancelar
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <ProspectsImportDialog />
+            <ProspectsExportDialog prospects={filteredProspects} />
+            <ProspectForm />
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -105,6 +165,13 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
         <Table className="min-w-250">
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[50px]">
+                <Checkbox
+                  checked={filteredProspects.length > 0 && selectedIds.size === filteredProspects.length}
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Seleccionar todos"
+                />
+              </TableHead>
               <TableHead>Nombre</TableHead>
               <TableHead>Tipo de negocio</TableHead>
               <TableHead>Teléfono</TableHead>
@@ -116,7 +183,7 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
           <TableBody>
             {filteredProspects.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                   No hay prospectos que coincidan con los filtros.
                 </TableCell>
               </TableRow>
@@ -124,18 +191,25 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
               filteredProspects.map((prospect) => (
                 <TableRow
                   key={prospect.id}
-                  className="cursor-pointer"
+                  className={`cursor-pointer ${selectedIds.has(prospect.id) ? 'bg-muted/50' : ''}`}
                   onDoubleClick={() => {
                     setSelectedProspect(prospect)
                     setIsDetailOpen(true)
                   }}
                 >
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={selectedIds.has(prospect.id)}
+                      onCheckedChange={() => toggleSelect(prospect.id)}
+                      aria-label={`Seleccionar ${prospect.name}`}
+                    />
+                  </TableCell>
                   <TableCell>{prospect.name}</TableCell>
                   <TableCell>{prospect.businessType}</TableCell>
                   <TableCell>{prospect.contactPhone}</TableCell>
                   <TableCell>{prospect.location}</TableCell>
                   <TableCell>{prospect.companyType}</TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2">
                       <Checkbox
                         checked={prospect.contacted}
@@ -152,7 +226,7 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                             }
                           })
                         }}
-                        aria-label={`Mark ${prospect.name} as contacted`}
+                        aria-label={`Marcar ${prospect.name} como contactado`}
                       />
                       {prospect.contacted ? (
                         <Badge className="border-transparent bg-chart-2/20 text-chart-2">
@@ -171,7 +245,8 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Doble click sobre un prospecto para ver detalle, editar, enviar WhatsApp o eliminar.
+        Doble click sobre un prospecto para ver detalle, editar, enviar WhatsApp
+ o eliminar.
       </p>
 
       <ProspectDetailDialog
