@@ -144,6 +144,82 @@ Copilot must NOT invent custom UI components if a shadcn component exists.
 
 ---
 
+# MANDATORY MODAL PATTERN (VERY IMPORTANT)
+
+This project **does NOT use separate pages for simple actions like viewing or editing records**.
+
+Instead, the application uses **modals (Dialogs)**.
+
+Copilot MUST follow this rule strictly.
+
+When implementing features such as:
+
+* View details
+* Edit record
+* Create record
+* Import data
+* Export data
+* Confirm actions
+* Preview data
+
+Copilot MUST use **shadcn Dialog components (modals)**.
+
+Example use cases:
+
+Correct behavior:
+
+Dealer list
+→ Click **"Ver detalle"**
+→ Opens **Dialog modal with dealer information**
+
+Dealer list
+→ Click **"Editar"**
+→ Opens **Dialog modal with edit form**
+
+Dealer list
+→ Click **"Importar"**
+→ Opens **Dialog modal with import preview**
+
+Incorrect behavior (DO NOT DO THIS):
+
+Creating routes like:
+
+```
+/dealers/details
+/dealers/edit
+/dealers/import
+```
+
+Or navigating to new pages for simple UI interactions.
+
+Navigation should only be used for **major sections**, such as:
+
+* Dashboard
+* Posibles Clientes
+* Clientes Activos
+* Configuración
+
+All **record-level actions must use modals**.
+
+Dialogs must use:
+
+```tsx
+Dialog
+DialogContent
+DialogHeader
+DialogTitle
+DialogDescription
+```
+
+Dialogs must also:
+
+* support scroll when content is long
+* be mobile responsive
+* include close buttons
+* support ESC close
+
+---
+
 # Mobile-First Responsive Design (MANDATORY)
 
 All UI must follow **mobile-first design principles**.
@@ -168,7 +244,7 @@ Examples:
 
 Tables must support:
 
-```css
+```
 overflow-x-auto
 ```
 
@@ -216,6 +292,7 @@ Avoid large monolithic components.
 Preferred structure:
 
 components/
+
 dealer-table.tsx
 dealer-form.tsx
 dealer-filters.tsx
@@ -371,9 +448,10 @@ If a feature already exists, Copilot should extend it rather than rebuild it.
 Copilot must prioritize:
 
 1. shadcn components
-2. mobile-first responsive layouts
-3. clean architecture
-4. maintainable code
+2. modal-based UI interactions
+3. mobile-first responsive layouts
+4. clean architecture
+5. maintainable code
 
 ---
 
