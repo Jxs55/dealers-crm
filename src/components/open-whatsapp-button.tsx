@@ -72,14 +72,14 @@ export function OpenWhatsAppButton({ prospect, templates }: OpenWhatsAppButtonPr
     const template = templates.find((item) => item.id === templateId)
 
     if (!template) {
-      toast.error("Template not found.")
+      toast.error("Plantilla no encontrada.")
       return
     }
 
     const finalMessage = renderMessageTemplate(template.messageTemplate, prospect)
 
     if (!finalMessage.trim()) {
-      toast.error("Template rendered an empty message.")
+      toast.error("La plantilla generó un mensaje vacío.")
       return
     }
 
@@ -91,7 +91,7 @@ export function OpenWhatsAppButton({ prospect, templates }: OpenWhatsAppButtonPr
 
   function startFlow() {
     if (templates.length === 0) {
-      toast.error("No templates available. Create one in Message Templates.")
+      toast.error("No hay plantillas disponibles. Crea una en Plantillas.")
       return
     }
 
@@ -113,7 +113,7 @@ export function OpenWhatsAppButton({ prospect, templates }: OpenWhatsAppButtonPr
         })
 
         if (!response.success) {
-          toast.error(response.error ?? "Unable to update status.")
+          toast.error(response.error ?? "No se pudo actualizar el estado.")
           return
         }
 
@@ -129,7 +129,7 @@ export function OpenWhatsAppButton({ prospect, templates }: OpenWhatsAppButtonPr
   return (
     <>
       <Button variant="outline" onClick={startFlow}>
-        Open WhatsApp
+        Enviar WhatsApp
       </Button>
 
       <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
@@ -159,7 +159,7 @@ export function OpenWhatsAppButton({ prospect, templates }: OpenWhatsAppButtonPr
                       <CardTitle className="text-base">{template.name}</CardTitle>
                       {isSelected ? <Badge>Seleccionada</Badge> : null}
                     </div>
-                    <CardDescription>Preview del mensaje final</CardDescription>
+                    <CardDescription>Vista previa del mensaje final</CardDescription>
                   </CardHeader>
                   <CardContent className="grid gap-3">
                     <p className="whitespace-pre-wrap rounded-md border bg-muted/40 p-3 text-sm">
@@ -196,7 +196,7 @@ export function OpenWhatsAppButton({ prospect, templates }: OpenWhatsAppButtonPr
           <div className="grid gap-3">
             {selectedTemplate ? (
               <p className="text-sm text-muted-foreground">
-                Plantilla seleccionada: <span className="font-medium">{selectedTemplate.name}</span>
+                        Plantilla seleccionada: <span className="font-medium">{selectedTemplate.name}</span>
               </p>
             ) : null}
 
@@ -216,7 +216,7 @@ export function OpenWhatsAppButton({ prospect, templates }: OpenWhatsAppButtonPr
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Preview mensaje final</CardTitle>
+                <CardTitle className="text-sm">Vista previa del mensaje final</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="whitespace-pre-wrap rounded-md border bg-muted/40 p-3 text-sm">

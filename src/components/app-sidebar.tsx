@@ -27,7 +27,7 @@ type NavigationItem = {
 const navigationItems: NavigationItem[] = [
   { label: "Clientes Activos", href: "/clientes-activos", icon: Users },
   { label: "Posibles Clientes", href: "/posibles-clientes", icon: UserPlus },
-  { label: "Message Templates", href: "/message-templates", icon: MessageSquareText },
+  { label: "Plantillas", href: "/message-templates", icon: MessageSquareText },
   { label: "Configuración", href: "/configuracion", icon: Settings },
 ]
 

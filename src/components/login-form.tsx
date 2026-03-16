@@ -34,7 +34,7 @@ export function LoginForm() {
       })
 
       if (!result || result.error) {
-        setError("Invalid ID or password.")
+        setError("ID o contraseña inválidos.")
         return
       }
 
@@ -46,9 +46,9 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle>Sign in</CardTitle>
+        <CardTitle>Iniciar sesión</CardTitle>
         <CardDescription>
-          Log in to access your dealer pipeline.
+          Accede para gestionar tu flujo de clientes.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -62,7 +62,7 @@ export function LoginForm() {
           />
           <Input
             type="password"
-            placeholder="Password"
+            placeholder="Contraseña"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             required
@@ -71,7 +71,7 @@ export function LoginForm() {
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
           <Button type="submit" disabled={isPending}>
-            {isPending ? "Signing in..." : "Sign in"}
+            {isPending ? "Ingresando..." : "Entrar"}
           </Button>
         </form>
       </CardContent>

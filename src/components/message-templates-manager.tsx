@@ -139,12 +139,12 @@ export function MessageTemplatesManager({ templates }: MessageTemplatesManagerPr
 
   function validateForm() {
     if (!formValues.name.trim()) {
-      setFormError("Template name is required.")
+        setFormError("El nombre de la plantilla es obligatorio.")
       return false
     }
 
     if (!formValues.messageTemplate.trim()) {
-      setFormError("Template content is required.")
+        setFormError("El contenido de la plantilla es obligatorio.")
       return false
     }
 
@@ -172,7 +172,7 @@ export function MessageTemplatesManager({ templates }: MessageTemplatesManagerPr
             })
 
       if (!response.success) {
-        setFormError(response.error ?? "Unable to save template.")
+        setFormError(response.error ?? "No se pudo guardar la plantilla.")
         return
       }
 
@@ -181,8 +181,8 @@ export function MessageTemplatesManager({ templates }: MessageTemplatesManagerPr
       router.refresh()
       toast.success(
         editorMode === "create"
-          ? "Template created successfully."
-          : "Template updated successfully."
+          ? "Plantilla creada correctamente."
+          : "Plantilla actualizada correctamente."
       )
     })
   }
@@ -192,13 +192,13 @@ export function MessageTemplatesManager({ templates }: MessageTemplatesManagerPr
       const response = await deleteMessageTemplate(id)
 
       if (!response.success) {
-        toast.error(response.error ?? "Unable to delete template.")
+        toast.error(response.error ?? "No se pudo eliminar la plantilla.")
         return
       }
 
       setDeleteTemplateId("")
       router.refresh()
-      toast.success("Template deleted successfully.")
+      toast.success("Plantilla eliminada correctamente.")
     })
   }
 
@@ -206,7 +206,7 @@ export function MessageTemplatesManager({ templates }: MessageTemplatesManagerPr
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 md:p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-xl font-semibold">Message Templates</h1>
+          <h1 className="text-xl font-semibold">Plantillas de mensajes</h1>
           <p className="text-sm text-muted-foreground">
             Crea y administra plantillas dinámicas para WhatsApp.
           </p>
@@ -214,12 +214,12 @@ export function MessageTemplatesManager({ templates }: MessageTemplatesManagerPr
 
         <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
           <DialogTrigger asChild>
-            <Button onClick={openCreateDialog}>Create Template</Button>
+            <Button onClick={openCreateDialog}>Crear plantilla</Button>
           </DialogTrigger>
           <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
             <DialogHeader>
               <DialogTitle>
-                {editorMode === "create" ? "Create Template" : "Edit Template"}
+                {editorMode === "create" ? "Crear plantilla" : "Editar plantilla"}
               </DialogTitle>
               <DialogDescription>
                 Usa variables con formato <code>{"{{field_name}}"}</code> para personalizar
@@ -237,7 +237,7 @@ export function MessageTemplatesManager({ templates }: MessageTemplatesManagerPr
                       name: event.target.value,
                     }))
                   }
-                  placeholder="Template name"
+                  placeholder="Nombre de la plantilla"
                 />
                 <Textarea
                   ref={textareaRef}
@@ -268,7 +268,7 @@ export function MessageTemplatesManager({ templates }: MessageTemplatesManagerPr
 
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Preview</CardTitle>
+                    <CardTitle className="text-sm">Vista previa</CardTitle>
                     <CardDescription>
                       Variables resaltadas para validar tu plantilla.
                     </CardDescription>
@@ -331,10 +331,10 @@ export function MessageTemplatesManager({ templates }: MessageTemplatesManagerPr
                 onClick={() => setIsEditorOpen(false)}
                 disabled={isSaving}
               >
-                Cancel
+                Cancelar
               </Button>
               <Button onClick={handleSaveTemplate} disabled={isSaving}>
-                {isSaving ? "Saving..." : editorMode === "create" ? "Create" : "Save"}
+                {isSaving ? "Guardando..." : editorMode === "create" ? "Crear" : "Guardar"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -345,7 +345,7 @@ export function MessageTemplatesManager({ templates }: MessageTemplatesManagerPr
         {templates.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-sm text-muted-foreground">
-              No templates yet. Create your first message template.
+              No hay plantillas todavía. Crea tu primera plantilla de mensaje.
             </CardContent>
           </Card>
         ) : (
@@ -356,7 +356,7 @@ export function MessageTemplatesManager({ templates }: MessageTemplatesManagerPr
                   <div>
                     <CardTitle className="text-base">{template.name}</CardTitle>
                     <CardDescription>
-                      Created at {formatCreatedAt(template.createdAt)}
+                      Creada el {formatCreatedAt(template.createdAt)}
                     </CardDescription>
                   </div>
                 </div>
@@ -368,7 +368,7 @@ export function MessageTemplatesManager({ templates }: MessageTemplatesManagerPr
               </CardContent>
               <CardFooter className="justify-end gap-2">
                 <Button variant="outline" onClick={() => openEditDialog(template)}>
-                  Edit
+                  Editar
                 </Button>
                 <Dialog
                   open={deleteTemplateId === template.id}
@@ -380,12 +380,12 @@ export function MessageTemplatesManager({ templates }: MessageTemplatesManagerPr
                       onClick={() => setDeleteTemplateId(template.id)}
                       disabled={isDeleting}
                     >
-                      Delete
+                      Eliminar
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Delete template</DialogTitle>
+                      <DialogTitle>Eliminar plantilla</DialogTitle>
                       <DialogDescription>
                         Esta acción eliminará la plantilla de forma permanente.
                       </DialogDescription>
@@ -396,14 +396,14 @@ export function MessageTemplatesManager({ templates }: MessageTemplatesManagerPr
                         onClick={() => setDeleteTemplateId("")}
                         disabled={isDeleting}
                       >
-                        Cancel
+                        Cancelar
                       </Button>
                       <Button
                         variant="destructive"
                         onClick={() => handleDeleteTemplate(template.id)}
                         disabled={isDeleting}
                       >
-                        {isDeleting ? "Deleting..." : "Confirm Delete"}
+                        {isDeleting ? "Eliminando..." : "Confirmar eliminación"}
                       </Button>
                     </DialogFooter>
                   </DialogContent>

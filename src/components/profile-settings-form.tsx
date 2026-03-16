@@ -32,28 +32,28 @@ export function ProfileSettingsForm({
           const result = await updateProfileSettings(formData)
 
           if (!result.success) {
-            setError(result.error ?? "Unable to update profile.")
+            setError(result.error ?? "No se pudo actualizar el perfil.")
             return
           }
 
-          setSuccess("Profile updated successfully.")
+          setSuccess("Perfil actualizado correctamente.")
           router.refresh()
         })
       }}
       className="grid gap-4"
     >
       <Field>
-        <FieldLabel htmlFor="name">Name</FieldLabel>
+        <FieldLabel htmlFor="name">Nombre</FieldLabel>
         <Input id="name" name="name" defaultValue={initialName} required />
       </Field>
 
       <Field>
-        <FieldLabel htmlFor="email">Email</FieldLabel>
+        <FieldLabel htmlFor="email">Correo electrónico</FieldLabel>
         <Input id="email" name="email" defaultValue={initialEmail} required />
       </Field>
 
       <Field>
-        <FieldLabel htmlFor="password">New Password</FieldLabel>
+        <FieldLabel htmlFor="password">Nueva contraseña</FieldLabel>
         <Input id="password" name="password" type="password" placeholder="********" />
       </Field>
 
@@ -62,7 +62,7 @@ export function ProfileSettingsForm({
 
       <div className="flex justify-end">
         <Button type="submit" disabled={isPending}>
-          {isPending ? "Saving..." : "Save Changes"}
+          {isPending ? "Guardando..." : "Guardar cambios"}
         </Button>
       </div>
     </form>

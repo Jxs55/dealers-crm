@@ -150,6 +150,125 @@ export async function updateDealerContacted(id: string, contacted: boolean) {
   return { success: true } satisfies ActionResult
 }
 
+type UpdateDealerInput = {
+  id: string
+  name: string
+  businessType: string
+  contactPhone: string
+  location: string
+  companyType: string
+}
+
+export async function updateDealer(input: UpdateDealerInput) {
+  const session = await getSession()
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Debes iniciar sesión." } satisfies ActionResult
+  }
+
+  const id = input.id.trim()
+  const name = input.name.trim()
+  const businessType = input.businessType.trim()
+  const contactPhoneRaw = input.contactPhone.trim()
+  const location = input.location.trim()
+  const companyType = input.companyType.trim()
+  const contactPhone = sanitizePhone(contactPhoneRaw)
+
+  if (!id) {
+    return { success: false, error: "ID de prospecto inválido." } satisfies ActionResult
+  }
+
+  if (!name || !businessType || !location || !companyType) {
+    return {
+      success: false,
+      error: "Todos los campos son obligatorios.",
+    } satisfies ActionResult
+  }
+
+  if (!contactPhone) {
+    return {
+      success: false,
+      error: "El teléfono es obligatorio.",
+    } satisfies ActionResult
+  }
+
+  if (!isValidDominicanPhone(contactPhoneRaw)) {
+    return {
+      success: false,
+      error: "El teléfono debe ser dominicano y válido.",
+    } satisfies ActionResult
+  }
+
+  const duplicate = await prisma.dealer.findFirst({
+    where: {
+      createdById: session.user.id,
+      contactPhone,
+      id: {
+        not: id,
+      },
+    },
+    select: { id: true },
+  })
+
+  if (duplicate) {
+    return {
+      success: false,
+      error: "Ya existe otro prospecto con ese teléfono.",
+    } satisfies ActionResult
+  }
+
+  const result = await prisma.dealer.updateMany({
+    where: {
+      id,
+      createdById: session.user.id,
+    },
+    data: {
+      name,
+      businessType,
+      contactPhone,
+      location,
+      companyType,
+    },
+  })
+
+  if (result.count === 0) {
+    return { success: false, error: "Prospecto no encontrado." } satisfies ActionResult
+  }
+
+  revalidatePath("/")
+  revalidatePath("/posibles-clientes")
+
+  return { success: true } satisfies ActionResult
+}
+
+export async function deleteDealer(id: string) {
+  const session = await getSession()
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Debes iniciar sesión." } satisfies ActionResult
+  }
+
+  if (!id.trim()) {
+    return { success: false, error: "ID de prospecto inválido." } satisfies ActionResult
+  }
+
+  const result = await prisma.dealer.deleteMany({
+    where: {
+      id,
+      createdById: session.user.id,
+    },
+  })
+
+  if (result.count === 0) {
+    return { success: false, error: "Prospecto no encontrado." } satisfies ActionResult
+  }
+
+  revalidatePath("/")
+  revalidatePath("/posibles-clientes")
+
+  return { success: true } satisfies ActionResult
+}
+
 export async function updateProfileSettings(formData: FormData) {
   const session = await getSession()
 

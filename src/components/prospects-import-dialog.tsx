@@ -57,12 +57,12 @@ type CompaniesImportPayload = {
 }
 
 const DATABASE_FIELDS: Array<{ value: DbField; label: string; required?: boolean }> = [
-  { value: "name", label: "name", required: true },
-  { value: "business_type", label: "business_type" },
-  { value: "phone", label: "phone", required: true },
-  { value: "location", label: "location" },
-  { value: "company_size", label: "company_size" },
-  { value: "status", label: "status" },
+  { value: "name", label: "nombre", required: true },
+  { value: "business_type", label: "tipo_negocio" },
+  { value: "phone", label: "telefono", required: true },
+  { value: "location", label: "ubicacion" },
+  { value: "company_size", label: "tamano_empresa" },
+  { value: "status", label: "estado" },
 ]
 
 const REQUIRED_FIELDS: DbField[] = ["name", "phone"]
@@ -276,7 +276,7 @@ export function ProspectsImportDialog() {
         <DialogHeader>
           <DialogTitle>Importar CSV (3 pasos)</DialogTitle>
           <DialogDescription>
-            1) Upload CSV · 2) Map Columns · 3) Import Data
+            1) Subir CSV · 2) Mapear columnas · 3) Importar datos
           </DialogDescription>
         </DialogHeader>
 
@@ -377,7 +377,7 @@ export function ProspectsImportDialog() {
         <DialogFooter>
           {step === 2 ? (
             <Button onClick={handleImport} disabled={!canContinueToImport || isImporting}>
-              {isImporting ? "Importando..." : "Import Data"}
+              {isImporting ? "Importando..." : "Importar datos"}
             </Button>
           ) : null}
 

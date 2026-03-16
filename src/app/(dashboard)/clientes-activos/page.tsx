@@ -29,7 +29,7 @@ export default function ClientesActivosPage() {
               <TableHead>Teléfono</TableHead>
               <TableHead>Plan</TableHead>
               <TableHead>Estado</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
+              <TableHead className="text-right">Detalle</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

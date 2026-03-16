@@ -4,7 +4,6 @@ import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
 import { updateDealerContacted } from "@/app/actions"
-import { OpenWhatsAppButton } from "@/components/open-whatsapp-button"
 import { ProspectDetailDialog } from "@/components/prospect-detail-dialog"
 import { ProspectsExportDialog } from "@/components/prospects-export-dialog"
 import { ProspectForm } from "@/components/prospect-form"
@@ -36,6 +35,8 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
   const [filterMode, setFilterMode] = useState<FilterMode>("all")
   const [search, setSearch] = useState("")
   const [isUpdating, startUpdating] = useTransition()
+  const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
 
   const filteredProspects = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
@@ -76,26 +77,26 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-wrap gap-2">
           <Button variant={filterButtonStyle("all")} onClick={() => setFilterMode("all")}>
-            All
+            Todos
           </Button>
           <Button
             variant={filterButtonStyle("contacted")}
             onClick={() => setFilterMode("contacted")}
           >
-            Contacted
+            Contactados
           </Button>
           <Button
             variant={filterButtonStyle("not-contacted")}
             onClick={() => setFilterMode("not-contacted")}
           >
-            Not Contacted
+            Pendientes
           </Button>
         </div>
 
         <Input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search by name"
+          placeholder="Buscar por nombre"
           className="w-full md:w-72"
         />
       </div>
@@ -104,25 +105,31 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
         <Table className="min-w-250">
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Business Type</TableHead>
-              <TableHead>Contact Phone</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Company Type</TableHead>
-              <TableHead>Contacted</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>Nombre</TableHead>
+              <TableHead>Tipo de negocio</TableHead>
+              <TableHead>Teléfono</TableHead>
+              <TableHead>Ubicación</TableHead>
+              <TableHead>Tipo de empresa</TableHead>
+              <TableHead>Estado</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredProspects.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
-                  No prospects match your filters.
+                <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                  No hay prospectos que coincidan con los filtros.
                 </TableCell>
               </TableRow>
             ) : (
               filteredProspects.map((prospect) => (
-                <TableRow key={prospect.id}>
+                <TableRow
+                  key={prospect.id}
+                  className="cursor-pointer"
+                  onDoubleClick={() => {
+                    setSelectedProspect(prospect)
+                    setIsDetailOpen(true)
+                  }}
+                >
                   <TableCell>{prospect.name}</TableCell>
                   <TableCell>{prospect.businessType}</TableCell>
                   <TableCell>{prospect.contactPhone}</TableCell>
@@ -149,17 +156,11 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                       />
                       {prospect.contacted ? (
                         <Badge className="border-transparent bg-chart-2/20 text-chart-2">
-                          Contacted
+                          Contactado
                         </Badge>
                       ) : (
-                        <Badge variant="secondary">Not Contacted</Badge>
+                        <Badge variant="secondary">Pendiente</Badge>
                       )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <ProspectDetailDialog prospect={prospect} />
-                      <OpenWhatsAppButton prospect={prospect} templates={templates} />
                     </div>
                   </TableCell>
                 </TableRow>
@@ -168,6 +169,17 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
           </TableBody>
         </Table>
       </div>
+
+      <p className="text-sm text-muted-foreground">
+        Doble click sobre un prospecto para ver detalle, editar, enviar WhatsApp o eliminar.
+      </p>
+
+      <ProspectDetailDialog
+        prospect={selectedProspect}
+        templates={templates}
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+      />
     </div>
   )
 }

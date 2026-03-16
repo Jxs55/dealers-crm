@@ -31,7 +31,7 @@ export default async function ConfiguracionPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>User Profile</CardTitle>
+          <CardTitle>Perfil de usuario</CardTitle>
           <CardDescription>
             Actualiza tus datos personales y seguridad de acceso.
           </CardDescription>

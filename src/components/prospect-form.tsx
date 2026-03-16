@@ -33,11 +33,11 @@ export function ProspectForm() {
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>
-        <Button>Add Prospecto</Button>
+        <Button>Agregar prospecto</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Prospecto</DialogTitle>
+          <DialogTitle>Agregar prospecto</DialogTitle>
           <DialogDescription>
             Guarda un posible cliente para contacto comercial.
           </DialogDescription>
@@ -53,24 +53,24 @@ export function ProspectForm() {
               const sanitizedPhone = sanitizePhone(phoneValue)
 
               if (!sanitizedPhone) {
-                setPhoneError("Phone is required.")
+                setPhoneError("El teléfono es obligatorio.")
                 return
               }
 
               if (sanitizedPhone.length < 10) {
-                setPhoneError("Phone must contain at least 10 digits.")
+                setPhoneError("El teléfono debe tener al menos 10 dígitos.")
                 return
               }
 
               if (!isValidDominicanPhone(phoneValue)) {
-                setPhoneError("Phone must be a valid Dominican number.")
+                setPhoneError("El teléfono debe ser dominicano y válido.")
                 return
               }
 
               const result = await createDealer(formData)
 
               if (!result.success) {
-                setFormError(result.error ?? "Unable to save prospect.")
+                setFormError(result.error ?? "No se pudo guardar el prospecto.")
                 return
               }
 
@@ -81,11 +81,11 @@ export function ProspectForm() {
           }}
           className="grid gap-3"
         >
-          <Input name="name" placeholder="Name" required />
-          <Input name="businessType" placeholder="Business Type" required />
+          <Input name="name" placeholder="Nombre" required />
+          <Input name="businessType" placeholder="Tipo de negocio" required />
 
           <Field>
-            <FieldLabel htmlFor="contactPhone">Phone</FieldLabel>
+            <FieldLabel htmlFor="contactPhone">Teléfono</FieldLabel>
             <Input
               id="contactPhone"
               name="contactPhone"
@@ -103,14 +103,14 @@ export function ProspectForm() {
             <FieldError>{phoneError}</FieldError>
           </Field>
 
-          <Input name="location" placeholder="Location" required />
-          <Input name="companyType" placeholder="Company Type" required />
+          <Input name="location" placeholder="Ubicación" required />
+          <Input name="companyType" placeholder="Tipo de empresa" required />
 
           {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
 
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : "Save Prospecto"}
+              {isSubmitting ? "Guardando..." : "Guardar prospecto"}
             </Button>
           </DialogFooter>
         </form>
