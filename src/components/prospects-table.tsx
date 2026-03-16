@@ -57,6 +57,18 @@ function getWhatsAppUrl(phone: string, message: string) {
   return `https://web.whatsapp.com/send?phone=${phone.replace(/\D/g, "")}&text=${encodeURIComponent(message)}`
 }
 
+function openOrReuseWhatsAppTab(url: string) {
+  const whatsappTab = window.open("", "crm-whatsapp-tab")
+
+  if (!whatsappTab) {
+    window.open(url, "_blank")
+    return
+  }
+
+  whatsappTab.location.href = url
+  whatsappTab.focus()
+}
+
 function getInstagramUrl(handle: string) {
   return `https://instagram.com/${handle}`
 }
@@ -352,6 +364,17 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                                       prospect.phone,
                                       renderMessageTemplate(defaultMessage, prospect)
                                     )}
+                                    onClick={(event) => {
+                                      event.preventDefault()
+
+                                      openOrReuseWhatsAppTab(
+                                        getWhatsAppUrl(
+                                          prospect.phone,
+                                          renderMessageTemplate(defaultMessage, prospect)
+                                        )
+                                      )
+                                    }}
+                                    target="crm-whatsapp-tab"
                                   >
                                     <MessageCircle className="h-4 w-4 text-chart-2" />
                                     <span className="sr-only">Open WhatsApp</span>

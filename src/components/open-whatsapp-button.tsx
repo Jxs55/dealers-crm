@@ -46,6 +46,18 @@ function getWhatsAppUrl(phone: string, message: string) {
   return `https://web.whatsapp.com/send?phone=${normalizedPhone}&text=${encodedMessage}`
 }
 
+function openOrReuseWhatsAppTab(url: string) {
+  const whatsappTab = window.open("", "crm-whatsapp-tab")
+
+  if (!whatsappTab) {
+    window.open(url, "_blank")
+    return
+  }
+
+  whatsappTab.location.href = url
+  whatsappTab.focus()
+}
+
 export function OpenWhatsAppButton({ prospect, templates }: OpenWhatsAppButtonProps) {
   const router = useRouter()
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false)
@@ -126,7 +138,7 @@ export function OpenWhatsAppButton({ prospect, templates }: OpenWhatsAppButtonPr
       }
 
       const url = getWhatsAppUrl(prospect.phone, preparedMessage)
-      window.location.assign(url)
+      openOrReuseWhatsAppTab(url)
       closeAllDialogs()
     })
   }
