@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
 import { updateDealerContacted } from "@/app/actions"
+import { OpenWhatsAppButton } from "@/components/open-whatsapp-button"
 import { ProspectDetailDialog } from "@/components/prospect-detail-dialog"
 import { ProspectsExportDialog } from "@/components/prospects-export-dialog"
 import { ProspectForm } from "@/components/prospect-form"
@@ -20,20 +21,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import type { MessageTemplate } from "@/types/message-template"
 import type { Prospect } from "@/types/prospect"
 
 type FilterMode = "all" | "contacted" | "not-contacted"
 
 type ProspectsTableProps = {
   prospects: Prospect[]
+  templates: MessageTemplate[]
 }
 
-function toWhatsAppUrl(phone: string) {
-  const normalizedPhone = phone.replace(/\D/g, "")
-  return `https://wa.me/${normalizedPhone}?text=Hola`
-}
-
-export function ProspectsTable({ prospects }: ProspectsTableProps) {
+export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
   const router = useRouter()
   const [filterMode, setFilterMode] = useState<FilterMode>("all")
   const [search, setSearch] = useState("")
@@ -161,15 +159,7 @@ export function ProspectsTable({ prospects }: ProspectsTableProps) {
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <ProspectDetailDialog prospect={prospect} />
-                      <Button variant="outline" asChild>
-                        <a
-                          href={toWhatsAppUrl(prospect.contactPhone)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Open WhatsApp
-                        </a>
-                      </Button>
+                      <OpenWhatsAppButton prospect={prospect} templates={templates} />
                     </div>
                   </TableCell>
                 </TableRow>

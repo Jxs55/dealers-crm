@@ -7,12 +7,26 @@ export const dynamic = "force-dynamic"
 export default async function PosiblesClientesPage() {
   const user = await requireAuthUser()
 
-  const prospects = await prisma.dealer.findMany({
-    where: {
-      createdById: user.id,
-    },
-    orderBy: { createdAt: "desc" },
-  })
+  const [prospects, templates] = await Promise.all([
+    prisma.dealer.findMany({
+      where: {
+        createdById: user.id,
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.messageTemplate.findMany({
+      where: {
+        createdById: user.id,
+      },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        messageTemplate: true,
+        createdAt: true,
+      },
+    }),
+  ])
 
-  return <ProspectsTable prospects={prospects} />
+  return <ProspectsTable prospects={prospects} templates={templates} />
 }

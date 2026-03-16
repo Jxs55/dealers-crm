@@ -19,6 +19,21 @@ type ImportResult = ActionResult & {
   skippedCount?: number
 }
 
+type MessageTemplateActionResult = ActionResult & {
+  templateId?: string
+}
+
+type MessageTemplateInput = {
+  id?: string
+  name: string
+  messageTemplate: string
+}
+
+type WhatsAppStatusInput = {
+  dealerId: string
+  status: "contacted" | "pending"
+}
+
 function normalizeProspectName(name: string) {
   return name.trim().toLowerCase().replace(/\s+/g, " ")
 }
@@ -312,4 +327,188 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
     insertedCount: result.insertedCount,
     skippedCount: result.skippedCount,
   } satisfies ImportResult
+}
+
+export async function createMessageTemplate(input: MessageTemplateInput) {
+  const session = await getSession()
+
+  if (!session?.user?.id) {
+    return { success: false, error: "You must be logged in." } satisfies MessageTemplateActionResult
+  }
+
+  const name = input.name.trim()
+  const messageTemplate = input.messageTemplate.trim()
+
+  if (!name) {
+    return { success: false, error: "Template name is required." } satisfies MessageTemplateActionResult
+  }
+
+  if (!messageTemplate) {
+    return {
+      success: false,
+      error: "Template content is required.",
+    } satisfies MessageTemplateActionResult
+  }
+
+  try {
+    const template = await prisma.messageTemplate.create({
+      data: {
+        name,
+        messageTemplate,
+        createdById: session.user.id,
+      },
+      select: { id: true },
+    })
+
+    revalidatePath("/message-templates")
+    revalidatePath("/posibles-clientes")
+
+    return {
+      success: true,
+      templateId: template.id,
+    } satisfies MessageTemplateActionResult
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return {
+        success: false,
+        error: "Template name already exists.",
+      } satisfies MessageTemplateActionResult
+    }
+
+    return {
+      success: false,
+      error: "Unable to create template right now.",
+    } satisfies MessageTemplateActionResult
+  }
+}
+
+export async function updateMessageTemplate(input: MessageTemplateInput) {
+  const session = await getSession()
+
+  if (!session?.user?.id) {
+    return { success: false, error: "You must be logged in." } satisfies MessageTemplateActionResult
+  }
+
+  const id = input.id?.trim() ?? ""
+  const name = input.name.trim()
+  const messageTemplate = input.messageTemplate.trim()
+
+  if (!id) {
+    return { success: false, error: "Invalid template id." } satisfies MessageTemplateActionResult
+  }
+
+  if (!name) {
+    return { success: false, error: "Template name is required." } satisfies MessageTemplateActionResult
+  }
+
+  if (!messageTemplate) {
+    return {
+      success: false,
+      error: "Template content is required.",
+    } satisfies MessageTemplateActionResult
+  }
+
+  try {
+    const result = await prisma.messageTemplate.updateMany({
+      where: {
+        id,
+        createdById: session.user.id,
+      },
+      data: {
+        name,
+        messageTemplate,
+      },
+    })
+
+    if (result.count === 0) {
+      return { success: false, error: "Template not found." } satisfies MessageTemplateActionResult
+    }
+
+    revalidatePath("/message-templates")
+    revalidatePath("/posibles-clientes")
+
+    return {
+      success: true,
+      templateId: id,
+    } satisfies MessageTemplateActionResult
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return {
+        success: false,
+        error: "Template name already exists.",
+      } satisfies MessageTemplateActionResult
+    }
+
+    return {
+      success: false,
+      error: "Unable to update template right now.",
+    } satisfies MessageTemplateActionResult
+  }
+}
+
+export async function deleteMessageTemplate(id: string) {
+  const session = await getSession()
+
+  if (!session?.user?.id) {
+    return { success: false, error: "You must be logged in." } satisfies ActionResult
+  }
+
+  if (!id) {
+    return { success: false, error: "Invalid template id." } satisfies ActionResult
+  }
+
+  const result = await prisma.messageTemplate.deleteMany({
+    where: {
+      id,
+      createdById: session.user.id,
+    },
+  })
+
+  if (result.count === 0) {
+    return { success: false, error: "Template not found." } satisfies ActionResult
+  }
+
+  revalidatePath("/message-templates")
+  revalidatePath("/posibles-clientes")
+
+  return { success: true } satisfies ActionResult
+}
+
+export async function updateDealerStatusForWhatsApp(input: WhatsAppStatusInput) {
+  const session = await getSession()
+
+  if (!session?.user?.id) {
+    return { success: false, error: "You must be logged in." } satisfies ActionResult
+  }
+
+  if (!input.dealerId) {
+    return { success: false, error: "Invalid dealer id." } satisfies ActionResult
+  }
+
+  const contacted = input.status === "contacted"
+
+  const result = await prisma.dealer.updateMany({
+    where: {
+      id: input.dealerId,
+      createdById: session.user.id,
+    },
+    data: {
+      contacted,
+    },
+  })
+
+  if (result.count === 0) {
+    return { success: false, error: "Dealer not found." } satisfies ActionResult
+  }
+
+  revalidatePath("/clientes-activos")
+  revalidatePath("/posibles-clientes")
+
+  return { success: true } satisfies ActionResult
 }
