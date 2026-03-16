@@ -1,7 +1,5 @@
-import Link from "next/link"
-
+import { ActiveClientDetailDialog } from "@/components/active-client-detail-dialog"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { activeClients } from "@/lib/active-clients"
 import {
   Table,
@@ -14,16 +12,16 @@ import {
 
 export default function ClientesActivosPage() {
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-4 md:p-6">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 md:p-6">
       <div>
-        <h1 className="text-xl font-semibold">Clientes Activos</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-2xl font-semibold tracking-tight">Clientes Activos</h1>
+        <p className="text-base text-muted-foreground">
           Empresas que ya usan tu ERP con plan vigente.
         </p>
       </div>
 
-      <div className="rounded-xl border">
-        <Table>
+      <div className="rounded-xl border bg-card shadow-sm">
+        <Table className="min-w-205">
           <TableHeader>
             <TableRow>
               <TableHead>Empresa</TableHead>
@@ -47,9 +45,7 @@ export default function ClientesActivosPage() {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button variant="outline" asChild>
-                    <Link href={`/clientes-activos/${client.id}`}>Ver detalle</Link>
-                  </Button>
+                  <ActiveClientDetailDialog client={client} />
                 </TableCell>
               </TableRow>
             ))}

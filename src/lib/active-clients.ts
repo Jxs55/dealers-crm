@@ -3,6 +3,9 @@ export type ActiveClient = {
   company: string
   contact: string
   phone: string
+  businessType: string
+  location: string
+  companyType: string
   plan: string
   status: string
 }
@@ -13,6 +16,9 @@ export const activeClients: ActiveClient[] = [
     company: "Auto Norte SRL",
     contact: "María Hernández",
     phone: "18095551234",
+    businessType: "Dealer de vehículos usados",
+    location: "Santo Domingo",
+    companyType: "Mediana",
     plan: "Pro",
     status: "Activo",
   },
@@ -21,6 +27,9 @@ export const activeClients: ActiveClient[] = [
     company: "Caribe Motors",
     contact: "Luis Gómez",
     phone: "18295552345",
+    businessType: "Dealer / broker de autos",
+    location: "Santiago",
+    companyType: "Grande",
     plan: "Enterprise",
     status: "Activo",
   },

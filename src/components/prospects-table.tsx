@@ -58,11 +58,11 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
     mode === filterMode ? "default" : "outline"
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-4 md:p-6">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 md:p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-xl font-semibold">Posibles Clientes</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-2xl font-semibold tracking-tight">Posibles Clientes</h1>
+          <p className="text-base text-muted-foreground">
             Gestiona prospectos que podrían contratar tu ERP.
           </p>
         </div>
@@ -100,8 +100,8 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
         />
       </div>
 
-      <div className="rounded-xl border">
-        <Table>
+      <div className="rounded-xl border bg-card shadow-sm">
+        <Table className="min-w-250">
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
