@@ -69,7 +69,7 @@ export function ProspectsTable({ prospects }: ProspectsTableProps) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <ProspectsImportDialog existingProspects={prospects} />
+          <ProspectsImportDialog />
           <ProspectsExportDialog prospects={filteredProspects} />
           <ProspectForm />
         </div>

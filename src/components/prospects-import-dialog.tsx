@@ -1,16 +1,9 @@
 "use client"
 
 import { useMemo, useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
 import Papa from "papaparse"
-import * as XLSX from "xlsx"
+import { toast } from "sonner"
 
-import { importProspectsBatch } from "@/app/actions"
-import {
-  mapPdfLineToProspect,
-  mapRecordToProspect,
-} from "@/lib/prospect-import"
-import { isValidDominicanPhone, sanitizePhone } from "@/lib/phone"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -23,6 +16,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Progress } from "@/components/ui/progress"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -31,291 +32,230 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import type { Prospect, ProspectImportInput, ProspectImportRow } from "@/types/prospect"
 
-type PreviewRow = ProspectImportRow & {
-  errors: string[]
-  duplicatePhone: boolean
-  duplicateName: boolean
-  excluded: boolean
+type CsvRow = Record<string, string>
+
+type DbField =
+  | "name"
+  | "business_type"
+  | "phone"
+  | "location"
+  | "company_size"
+  | "status"
+
+type MappingValue = DbField | "skip"
+
+type MappingState = Record<string, MappingValue>
+
+type CompaniesImportPayload = {
+  name: string
+  business_type: string
+  phone: string
+  location: string
+  company_size: string
+  status: string
 }
 
-type ProspectsImportDialogProps = {
-  existingProspects: Prospect[]
+const DATABASE_FIELDS: Array<{ value: DbField; label: string; required?: boolean }> = [
+  { value: "name", label: "name", required: true },
+  { value: "business_type", label: "business_type" },
+  { value: "phone", label: "phone", required: true },
+  { value: "location", label: "location" },
+  { value: "company_size", label: "company_size" },
+  { value: "status", label: "status" },
+]
+
+const REQUIRED_FIELDS: DbField[] = ["name", "phone"]
+
+const FIELD_SUGGESTIONS: Record<DbField, string[]> = {
+  name: ["name", "nombre", "empresa", "company", "nombre de la empresa"],
+  business_type: ["business type", "tipo negocio", "tipo de negocio", "business"],
+  phone: ["phone", "telefono", "tel", "teléfono", "contact"],
+  location: ["location", "ubicacion", "ubicación", "city", "direccion"],
+  company_size: ["company size", "tipo empresa", "tipo de empresa", "size"],
+  status: ["status", "estado"],
 }
 
-function normalizeName(name: string) {
-  return name.trim().toLowerCase().replace(/\s+/g, " ")
+function normalize(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toLowerCase()
 }
 
-function makeLocalId(index: number) {
-  return `row-${index}-${Math.random().toString(36).slice(2, 9)}`
-}
+function suggestMapping(header: string): MappingValue {
+  const normalizedHeader = normalize(header)
 
-function computePreviewRows(
-  rows: ProspectImportRow[],
-  existingProspects: Prospect[]
-): PreviewRow[] {
-  const existingPhoneSet = new Set(existingProspects.map((item) => sanitizePhone(item.contactPhone)))
-  const existingNameSet = new Set(existingProspects.map((item) => normalizeName(item.name)))
-
-  const phoneCounts = new Map<string, number>()
-  const nameCounts = new Map<string, number>()
-
-  for (const row of rows) {
-    const sanitized = sanitizePhone(row.contactPhone)
-    const normalizedName = normalizeName(row.name)
-
-    if (sanitized) {
-      phoneCounts.set(sanitized, (phoneCounts.get(sanitized) ?? 0) + 1)
-    }
-
-    if (normalizedName) {
-      nameCounts.set(normalizedName, (nameCounts.get(normalizedName) ?? 0) + 1)
+  for (const [field, terms] of Object.entries(FIELD_SUGGESTIONS) as Array<
+    [DbField, string[]]
+  >) {
+    if (terms.some((term) => normalizedHeader.includes(normalize(term)))) {
+      return field
     }
   }
 
+  return "skip"
+}
+
+function buildInitialMapping(headers: string[]): MappingState {
+  const used = new Set<DbField>()
+  const mapping: MappingState = {}
+
+  for (const header of headers) {
+    const suggestion = suggestMapping(header)
+
+    if (suggestion !== "skip" && !used.has(suggestion)) {
+      mapping[header] = suggestion
+      used.add(suggestion)
+    } else {
+      mapping[header] = "skip"
+    }
+  }
+
+  return mapping
+}
+
+function buildPayload(rows: CsvRow[], mapping: MappingState): CompaniesImportPayload[] {
   return rows.map((row) => {
-    const errors: string[] = []
-    const sanitized = sanitizePhone(row.contactPhone)
-    const normalizedName = normalizeName(row.name)
-
-    if (!row.name.trim()) {
-      errors.push("Nombre requerido")
+    const output: CompaniesImportPayload = {
+      name: "",
+      business_type: "",
+      phone: "",
+      location: "",
+      company_size: "",
+      status: "lead",
     }
 
-    if (!row.businessType.trim()) {
-      errors.push("Tipo de negocio requerido")
-    }
-
-    if (!row.location.trim()) {
-      errors.push("Ubicación requerida")
-    }
-
-    if (!row.companyType.trim()) {
-      errors.push("Tipo de empresa requerido")
-    }
-
-    if (!row.contactPhone.trim()) {
-      errors.push("Teléfono requerido")
-    }
-
-    if (/[A-Za-z]/.test(row.contactPhone)) {
-      errors.push("Solo dígitos permitidos")
-    }
-
-    if (sanitized.length < 10) {
-      errors.push("Mínimo 10 dígitos")
-    }
-
-    if (!isValidDominicanPhone(row.contactPhone)) {
-      errors.push("Formato dominicano inválido")
-    }
-
-    const duplicatePhone =
-      (sanitized.length > 0 && (phoneCounts.get(sanitized) ?? 0) > 1) ||
-      existingPhoneSet.has(sanitized)
-
-    const duplicateName =
-      (normalizedName.length > 0 && (nameCounts.get(normalizedName) ?? 0) > 1) ||
-      existingNameSet.has(normalizedName)
-
-    const excluded = errors.length > 0 || duplicatePhone || duplicateName
-
-    return {
-      ...row,
-      errors,
-      duplicatePhone,
-      duplicateName,
-      excluded,
-    }
-  })
-}
-
-async function parseCsv(file: File) {
-  const text = await file.text()
-  const result = Papa.parse<Record<string, unknown>>(text, {
-    header: true,
-    skipEmptyLines: true,
-  })
-
-  return result.data.map((record, index) => ({
-    localId: makeLocalId(index),
-    ...mapRecordToProspect(record),
-  }))
-}
-
-async function parseXlsx(file: File) {
-  const buffer = await file.arrayBuffer()
-  const workbook = XLSX.read(buffer, { type: "array" })
-  const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
-  const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet)
-
-  return data.map((record, index) => ({
-    localId: makeLocalId(index),
-    ...mapRecordToProspect(record),
-  }))
-}
-
-async function parsePdf(file: File) {
-  const pdfjs = await import("pdfjs-dist")
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`
-
-  const data = new Uint8Array(await file.arrayBuffer())
-  const document = await pdfjs.getDocument({ data }).promise
-
-  const parsedRows: ProspectImportRow[] = []
-
-  for (let pageIndex = 1; pageIndex <= document.numPages; pageIndex++) {
-    const page = await document.getPage(pageIndex)
-    const textContent = await page.getTextContent()
-    const items = textContent.items as Array<{ str: string; transform: number[] }>
-
-    const linesByY = new Map<number, Array<{ x: number; text: string }>>()
-
-    for (const item of items) {
-      const y = Math.round(item.transform[5])
-      const x = item.transform[4]
-      const current = linesByY.get(y) ?? []
-      current.push({ x, text: item.str })
-      linesByY.set(y, current)
-    }
-
-    const sortedLines = [...linesByY.entries()]
-      .sort((a, b) => b[0] - a[0])
-      .map(([, parts]) =>
-        parts
-          .sort((a, b) => a.x - b.x)
-          .map((part) => part.text)
-          .join(" ")
-          .trim()
-      )
-
-    for (const line of sortedLines) {
-      if (/name|nombre|telefono|teléfono|phone/i.test(line)) {
+    for (const [header, target] of Object.entries(mapping)) {
+      if (target === "skip") {
         continue
       }
 
-      const mapped = mapPdfLineToProspect(line)
-      if (!mapped) {
-        continue
-      }
+      output[target] = String(row[header] ?? "").trim()
+    }
 
-      parsedRows.push({
-        localId: makeLocalId(parsedRows.length),
-        ...mapped,
-      })
+    return output
+  })
+}
+
+function validateMapping(mapping: MappingState): string[] {
+  const errors: string[] = []
+  const assigned = Object.values(mapping).filter((value) => value !== "skip") as DbField[]
+
+  for (const requiredField of REQUIRED_FIELDS) {
+    if (!assigned.includes(requiredField)) {
+      errors.push(`Debes mapear el campo obligatorio: ${requiredField}`)
     }
   }
 
-  return parsedRows
+  const counts = new Map<DbField, number>()
+  for (const field of assigned) {
+    counts.set(field, (counts.get(field) ?? 0) + 1)
+  }
+
+  for (const requiredField of REQUIRED_FIELDS) {
+    if ((counts.get(requiredField) ?? 0) > 1) {
+      errors.push(`No puedes mapear dos columnas al campo obligatorio: ${requiredField}`)
+    }
+  }
+
+  return errors
 }
 
-async function parseFile(file: File) {
-  const extension = file.name.split(".").pop()?.toLowerCase()
-
-  if (extension === "csv") {
-    return parseCsv(file)
-  }
-
-  if (extension === "xlsx") {
-    return parseXlsx(file)
-  }
-
-  if (extension === "pdf") {
-    return parsePdf(file)
-  }
-
-  throw new Error("Unsupported file type. Use CSV, XLSX or PDF.")
-}
-
-export function ProspectsImportDialog({ existingProspects }: ProspectsImportDialogProps) {
-  const router = useRouter()
-  const [rows, setRows] = useState<ProspectImportRow[]>([])
+export function ProspectsImportDialog() {
   const [open, setOpen] = useState(false)
-  const [parseError, setParseError] = useState("")
-  const [successMessage, setSuccessMessage] = useState("")
+  const [headers, setHeaders] = useState<string[]>([])
+  const [rows, setRows] = useState<CsvRow[]>([])
+  const [mapping, setMapping] = useState<MappingState>({})
+  const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [error, setError] = useState("")
   const [isParsing, startParsing] = useTransition()
   const [isImporting, startImporting] = useTransition()
 
-  const previewRows = useMemo(
-    () => computePreviewRows(rows, existingProspects),
-    [rows, existingProspects]
-  )
+  const previewRows = useMemo(() => rows.slice(0, 10), [rows])
+  const progressValue = step === 1 ? 33 : step === 2 ? 66 : 100
 
-  const validRows = previewRows.filter((row) => !row.excluded)
-  const excludedRows = previewRows.filter((row) => row.excluded)
-
-  const handleCellEdit = (
-    localId: string,
-    field: keyof ProspectImportInput,
-    value: string
-  ) => {
-    setRows((currentRows) =>
-      currentRows.map((row) =>
-        row.localId === localId
-          ? {
-              ...row,
-              [field]: value,
-            }
-          : row
-      )
-    )
+  const resetState = () => {
+    setHeaders([])
+    setRows([])
+    setMapping({})
+    setStep(1)
+    setError("")
   }
 
-  const handleFileUpload = (file: File | undefined) => {
+  const handleCsvUpload = (file: File | undefined) => {
     if (!file) {
       return
     }
 
     startParsing(async () => {
-      setParseError("")
-      setSuccessMessage("")
+      setError("")
 
       try {
-        const parsed = await parseFile(file)
-        setRows(parsed)
-      } catch (error) {
-        setRows([])
-        setParseError(
-          error instanceof Error
-            ? error.message
-            : "Unable to parse file for import preview."
-        )
+        const content = await file.text()
+        const result = Papa.parse<CsvRow>(content, {
+          header: true,
+          skipEmptyLines: true,
+        })
+
+        if (result.errors.length > 0) {
+          setError(result.errors[0]?.message ?? "Error leyendo CSV")
+          return
+        }
+
+        const parsedRows = result.data
+        const parsedHeaders = (result.meta.fields ?? []).filter(Boolean)
+
+        if (parsedHeaders.length === 0 || parsedRows.length === 0) {
+          setError("El CSV no tiene encabezados o filas válidas.")
+          return
+        }
+
+        setHeaders(parsedHeaders)
+        setRows(parsedRows)
+        setMapping(buildInitialMapping(parsedHeaders))
+        setStep(2)
+      } catch {
+        setError("No se pudo procesar el archivo CSV.")
       }
     })
   }
 
-  const handleConfirmImport = () => {
+  const mappingErrors = useMemo(() => validateMapping(mapping), [mapping])
+
+  const canContinueToImport = headers.length > 0 && rows.length > 0 && mappingErrors.length === 0
+
+  const handleImport = () => {
     startImporting(async () => {
-      setParseError("")
-      setSuccessMessage("")
+      setError("")
 
-      const payload: ProspectImportRow[] = validRows.map((row) => ({
-        localId: row.localId,
-        name: row.name,
-        businessType: row.businessType,
-        contactPhone: row.contactPhone,
-        location: row.location,
-        companyType: row.companyType,
-      }))
+      const payload = buildPayload(rows, mapping)
 
-      if (payload.length === 0) {
-        setParseError("No valid rows to import.")
+      const response = await fetch("/api/companies/import", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      })
+
+      const data = (await response.json()) as
+        | { inserted: number; skipped: number }
+        | { error: string }
+
+      if (!response.ok) {
+        const message = "error" in data ? data.error : "No se pudo importar."
+        setError(message)
+        toast.error(message)
         return
       }
 
-      const result = await importProspectsBatch(payload)
+      const inserted = "inserted" in data ? data.inserted : 0
+      const skipped = "skipped" in data ? data.skipped : 0
 
-      if (!result.success) {
-        setParseError(result.error ?? "Import failed.")
-        return
-      }
-
-      setSuccessMessage(
-        `Import completed. Inserted: ${result.insertedCount ?? 0}. Excluded: ${excludedRows.length + (result.skippedCount ?? 0)}.`
-      )
-      router.refresh()
+      toast.success(`Importación completada. Insertados: ${inserted}, omitidos: ${skipped}.`)
+      setStep(3)
     })
   }
 
@@ -325,9 +265,7 @@ export function ProspectsImportDialog({ existingProspects }: ProspectsImportDial
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen)
         if (!nextOpen) {
-          setRows([])
-          setParseError("")
-          setSuccessMessage("")
+          resetState()
         }
       }}
     >
@@ -336,126 +274,123 @@ export function ProspectsImportDialog({ existingProspects }: ProspectsImportDial
       </DialogTrigger>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-6xl">
         <DialogHeader>
-          <DialogTitle>Importar Posibles Clientes</DialogTitle>
+          <DialogTitle>Importar CSV (3 pasos)</DialogTitle>
           <DialogDescription>
-            Sube CSV, Excel o PDF, revisa el preview y confirma el import.
+            1) Upload CSV · 2) Map Columns · 3) Import Data
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-3">
-          <Input
-            type="file"
-            accept=".csv,.xlsx,.pdf"
-            onChange={(event) => handleFileUpload(event.target.files?.[0])}
-          />
+        <Progress value={progressValue} className="h-2" />
 
-          {isParsing ? <p className="text-sm text-muted-foreground">Parsing file...</p> : null}
+        {step === 1 ? (
+          <div className="grid gap-3">
+            <Input
+              type="file"
+              accept=".csv"
+              onChange={(event) => handleCsvUpload(event.target.files?.[0])}
+            />
+            <p className="text-sm text-muted-foreground">Solo se aceptan archivos .csv</p>
+            {isParsing ? <p className="text-sm">Procesando CSV...</p> : null}
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          </div>
+        ) : null}
 
-          {parseError ? <p className="text-sm text-destructive">{parseError}</p> : null}
-          {successMessage ? <p className="text-sm text-chart-2">{successMessage}</p> : null}
-
-          {rows.length > 0 ? (
-            <>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary">Total: {previewRows.length}</Badge>
-                <Badge className="border-transparent bg-chart-2/20 text-chart-2">
-                  Válidos: {validRows.length}
-                </Badge>
-                <Badge variant="destructive">Excluidos: {excludedRows.length}</Badge>
-              </div>
-
-              <div className="rounded-lg border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>Tipo de Negocio</TableHead>
-                      <TableHead>Teléfono</TableHead>
-                      <TableHead>Ubicación</TableHead>
-                      <TableHead>Tipo de Empresa</TableHead>
-                      <TableHead>Estado</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {previewRows.map((row) => (
-                      <TableRow
-                        key={row.localId}
-                        className={row.excluded ? "bg-destructive/5" : ""}
-                      >
-                        <TableCell>
-                          <Input
-                            value={row.name}
-                            onChange={(event) =>
-                              handleCellEdit(row.localId, "name", event.target.value)
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={row.businessType}
-                            onChange={(event) =>
-                              handleCellEdit(row.localId, "businessType", event.target.value)
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={row.contactPhone}
-                            onChange={(event) =>
-                              handleCellEdit(row.localId, "contactPhone", event.target.value)
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={row.location}
-                            onChange={(event) =>
-                              handleCellEdit(row.localId, "location", event.target.value)
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={row.companyType}
-                            onChange={(event) =>
-                              handleCellEdit(row.localId, "companyType", event.target.value)
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1">
-                            {row.errors.length > 0 ? (
-                              <Badge variant="destructive">Invalid data</Badge>
-                            ) : null}
-                            {row.duplicatePhone ? (
-                              <Badge variant="destructive">Duplicate phone</Badge>
-                            ) : null}
-                            {row.duplicateName ? (
-                              <Badge variant="destructive">Duplicate name</Badge>
-                            ) : null}
-                            {!row.excluded ? (
-                              <Badge className="border-transparent bg-chart-2/20 text-chart-2">
-                                Ready
-                              </Badge>
-                            ) : null}
-                          </div>
-                        </TableCell>
-                      </TableRow>
+        {step >= 2 ? (
+          <div className="grid gap-4">
+            <div className="rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {headers.map((header) => (
+                      <TableHead key={header}>{header}</TableHead>
                     ))}
-                  </TableBody>
-                </Table>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {previewRows.map((row, index) => (
+                    <TableRow key={`preview-${index}`}>
+                      {headers.map((header) => (
+                        <TableCell key={`${header}-${index}`}>{row[header]}</TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="grid gap-2">
+              {headers.map((header) => (
+                <div key={header} className="grid gap-1 sm:grid-cols-2 sm:items-center">
+                  <p className="text-sm font-medium">{header}</p>
+                  <Select
+                    value={mapping[header] ?? "skip"}
+                    onValueChange={(value) => {
+                      setMapping((current) => ({
+                        ...current,
+                        [header]: value as MappingValue,
+                      }))
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona un campo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DATABASE_FIELDS.map((field) => (
+                        <SelectItem key={field.value} value={field.value}>
+                          {field.label}
+                          {field.required ? " (obligatorio)" : ""}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="skip">No importar esta columna</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {DATABASE_FIELDS.map((field) => (
+                <Badge key={field.value} variant="secondary">
+                  {field.label}
+                </Badge>
+              ))}
+            </div>
+
+            {mappingErrors.length > 0 ? (
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                {mappingErrors.map((mappingError) => (
+                  <p key={mappingError}>{mappingError}</p>
+                ))}
               </div>
-            </>
-          ) : null}
-        </div>
+            ) : null}
+
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          </div>
+        ) : null}
+
+        {step === 3 ? (
+          <div className="rounded-md border border-chart-2/30 bg-chart-2/10 p-3 text-sm text-chart-2">
+            Importación finalizada correctamente.
+          </div>
+        ) : null}
 
         <DialogFooter>
-          <Button
-            onClick={handleConfirmImport}
-            disabled={isImporting || validRows.length === 0}
-          >
-            {isImporting ? "Importando..." : "Confirm Import"}
-          </Button>
+          {step === 2 ? (
+            <Button onClick={handleImport} disabled={!canContinueToImport || isImporting}>
+              {isImporting ? "Importando..." : "Import Data"}
+            </Button>
+          ) : null}
+
+          {step === 3 ? (
+            <Button
+              onClick={() => {
+                setOpen(false)
+                resetState()
+              }}
+            >
+              Cerrar
+            </Button>
+          ) : null}
         </DialogFooter>
       </DialogContent>
     </Dialog>
