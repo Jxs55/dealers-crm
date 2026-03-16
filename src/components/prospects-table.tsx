@@ -4,7 +4,10 @@ import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
 import { updateDealerContacted } from "@/app/actions"
+import { ProspectDetailDialog } from "@/components/prospect-detail-dialog"
+import { ProspectsExportDialog } from "@/components/prospects-export-dialog"
 import { ProspectForm } from "@/components/prospect-form"
+import { ProspectsImportDialog } from "@/components/prospects-import-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -17,16 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-
-type Prospect = {
-  id: string
-  name: string
-  businessType: string
-  contactPhone: string
-  location: string
-  companyType: string
-  contacted: boolean
-}
+import type { Prospect } from "@/types/prospect"
 
 type FilterMode = "all" | "contacted" | "not-contacted"
 
@@ -74,7 +68,11 @@ export function ProspectsTable({ prospects }: ProspectsTableProps) {
             Gestiona prospectos que podrían contratar tu ERP.
           </p>
         </div>
-        <ProspectForm />
+        <div className="flex flex-wrap items-center gap-2">
+          <ProspectsImportDialog existingProspects={prospects} />
+          <ProspectsExportDialog prospects={filteredProspects} />
+          <ProspectForm />
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -161,15 +159,18 @@ export function ProspectsTable({ prospects }: ProspectsTableProps) {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="outline" asChild>
-                      <a
-                        href={toWhatsAppUrl(prospect.contactPhone)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Open WhatsApp
-                      </a>
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <ProspectDetailDialog prospect={prospect} />
+                      <Button variant="outline" asChild>
+                        <a
+                          href={toWhatsAppUrl(prospect.contactPhone)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Open WhatsApp
+                        </a>
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
