@@ -57,6 +57,10 @@ function getWhatsAppUrl(phone: string, message: string) {
   return `https://web.whatsapp.com/send?phone=${phone.replace(/\D/g, "")}&text=${encodeURIComponent(message)}`
 }
 
+function getWhatsAppDesktopUrl(phone: string, message: string) {
+  return `whatsapp://send?phone=${phone.replace(/\D/g, "")}&text=${encodeURIComponent(message)}`
+}
+
 function openOrReuseWhatsAppTab(url: string) {
   const whatsappTab = window.open("", "crm-whatsapp-tab")
 
@@ -67,6 +71,29 @@ function openOrReuseWhatsAppTab(url: string) {
 
   whatsappTab.location.href = url
   whatsappTab.focus()
+}
+
+function openWhatsAppWithFallback(phone: string, message: string) {
+  const desktopUrl = getWhatsAppDesktopUrl(phone, message)
+  const webUrl = getWhatsAppUrl(phone, message)
+  let switchedContext = false
+
+  const onVisibilityChange = () => {
+    if (document.hidden) {
+      switchedContext = true
+    }
+  }
+
+  window.addEventListener("visibilitychange", onVisibilityChange)
+  window.location.href = desktopUrl
+
+  window.setTimeout(() => {
+    window.removeEventListener("visibilitychange", onVisibilityChange)
+
+    if (!switchedContext) {
+      openOrReuseWhatsAppTab(webUrl)
+    }
+  }, 900)
 }
 
 function getInstagramUrl(handle: string) {
@@ -366,12 +393,9 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                                     )}
                                     onClick={(event) => {
                                       event.preventDefault()
-
-                                      openOrReuseWhatsAppTab(
-                                        getWhatsAppUrl(
-                                          prospect.phone,
-                                          renderMessageTemplate(defaultMessage, prospect)
-                                        )
+                                      openWhatsAppWithFallback(
+                                        prospect.phone,
+                                        renderMessageTemplate(defaultMessage, prospect)
                                       )
                                     }}
                                     target="crm-whatsapp-tab"

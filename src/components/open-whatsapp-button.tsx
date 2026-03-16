@@ -46,6 +46,12 @@ function getWhatsAppUrl(phone: string, message: string) {
   return `https://web.whatsapp.com/send?phone=${normalizedPhone}&text=${encodedMessage}`
 }
 
+function getWhatsAppDesktopUrl(phone: string, message: string) {
+  const normalizedPhone = phone.replace(/\D/g, "")
+  const encodedMessage = encodeURIComponent(message)
+  return `whatsapp://send?phone=${normalizedPhone}&text=${encodedMessage}`
+}
+
 function openOrReuseWhatsAppTab(url: string) {
   const whatsappTab = window.open("", "crm-whatsapp-tab")
 
@@ -56,6 +62,29 @@ function openOrReuseWhatsAppTab(url: string) {
 
   whatsappTab.location.href = url
   whatsappTab.focus()
+}
+
+function openWhatsAppWithFallback(phone: string, message: string) {
+  const desktopUrl = getWhatsAppDesktopUrl(phone, message)
+  const webUrl = getWhatsAppUrl(phone, message)
+  let switchedContext = false
+
+  const onVisibilityChange = () => {
+    if (document.hidden) {
+      switchedContext = true
+    }
+  }
+
+  window.addEventListener("visibilitychange", onVisibilityChange)
+  window.location.href = desktopUrl
+
+  window.setTimeout(() => {
+    window.removeEventListener("visibilitychange", onVisibilityChange)
+
+    if (!switchedContext) {
+      openOrReuseWhatsAppTab(webUrl)
+    }
+  }, 900)
 }
 
 export function OpenWhatsAppButton({ prospect, templates }: OpenWhatsAppButtonProps) {
@@ -137,8 +166,7 @@ export function OpenWhatsAppButton({ prospect, templates }: OpenWhatsAppButtonPr
         router.refresh()
       }
 
-      const url = getWhatsAppUrl(prospect.phone, preparedMessage)
-      openOrReuseWhatsAppTab(url)
+      openWhatsAppWithFallback(prospect.phone, preparedMessage)
       closeAllDialogs()
     })
   }
