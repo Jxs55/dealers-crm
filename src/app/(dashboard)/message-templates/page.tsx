@@ -5,7 +5,7 @@ import { MessageTemplatesManager } from "@/components/message-templates-manager"
 export const dynamic = "force-dynamic"
 
 export default async function MessageTemplatesPage() {
-  const user = await requireAuthUser()
+  await requireAuthUser()
 
   const templates = await prisma.messageTemplate.findMany({
     where: {

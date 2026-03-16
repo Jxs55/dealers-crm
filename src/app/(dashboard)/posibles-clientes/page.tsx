@@ -5,7 +5,7 @@ import { ProspectsTable } from "@/components/prospects-table"
 export const dynamic = "force-dynamic"
 
 export default async function PosiblesClientesPage() {
-  const user = await requireAuthUser()
+  await requireAuthUser()
 
   const [prospects, templates] = await Promise.all([
     prisma.dealer.findMany({

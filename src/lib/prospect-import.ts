@@ -5,7 +5,10 @@ type GenericRecord = Record<string, unknown>
 const FIELD_ALIASES = {
   name: ["name", "nombre", "empresa", "company"],
   businessType: ["businesstype", "business_type", "tipo_negocio", "business"],
-  contactPhone: ["contactphone", "phone", "telefono", "teléfono", "contact"],
+  phone: ["contactphone", "phone", "telefono", "teléfono", "contact"],
+  whatsappPhone: ["whatsapp", "whatsappphone", "whatsapp_phone", "wa", "wa_phone"],
+  instagram: ["instagram", "instagram_user", "instagramuser", "ig", "ig_user"],
+  contactMethod: ["contactmethod", "contact_method", "metodo_contacto", "método_contacto"],
   location: ["location", "ubicacion", "ubicación", "city"],
   companyType: ["companytype", "company_type", "tipo_empresa", "segmento"],
 } as const
@@ -34,7 +37,15 @@ export function mapRecordToProspect(record: GenericRecord): ProspectImportInput 
   return {
     name: getValue(record, FIELD_ALIASES.name),
     businessType: getValue(record, FIELD_ALIASES.businessType),
-    contactPhone: getValue(record, FIELD_ALIASES.contactPhone),
+    phone: getValue(record, FIELD_ALIASES.phone),
+    whatsappPhone: getValue(record, FIELD_ALIASES.whatsappPhone),
+    instagram: getValue(record, FIELD_ALIASES.instagram),
+    contactMethod: getValue(record, FIELD_ALIASES.contactMethod) as
+      | "whatsapp"
+      | "instagram"
+      | "both"
+      | "none"
+      | "",
     location: getValue(record, FIELD_ALIASES.location),
     companyType: getValue(record, FIELD_ALIASES.companyType),
   }
@@ -59,8 +70,11 @@ export function mapPdfLineToProspect(line: string): ProspectImportInput | null {
   return {
     name: parts[0] ?? "",
     businessType: parts[1] ?? "",
-    contactPhone: parts[2] ?? "",
-    location: parts[3] ?? "",
-    companyType: parts[4] ?? "",
+    phone: parts[2] ?? "",
+    whatsappPhone: parts[3] ?? "",
+    instagram: parts[4] ?? "",
+    contactMethod: (parts[5] as "whatsapp" | "instagram" | "both" | "none" | "") ?? "",
+    location: parts[6] ?? "",
+    companyType: parts[7] ?? "",
   }
 }

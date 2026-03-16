@@ -34,6 +34,35 @@ type WhatsAppStatusInput = {
   status: "contacted" | "pending"
 }
 
+function sanitizeInstagramHandle(value: string) {
+  const cleaned = value
+    .trim()
+    .replace(/^@+/, "")
+    .replace(/^https?:\/\/(www\.)?instagram\.com\//i, "")
+    .replace(/\?.*$/, "")
+    .replace(/\/.*/, "")
+    .replace(/[^a-zA-Z0-9._]/g, "")
+    .toLowerCase()
+
+  return cleaned
+}
+
+function resolveContactMethod(whatsappPhone: string, instagram: string) {
+  if (whatsappPhone && instagram) {
+    return "both" as const
+  }
+
+  if (whatsappPhone) {
+    return "whatsapp" as const
+  }
+
+  if (instagram) {
+    return "instagram" as const
+  }
+
+  return "none" as const
+}
+
 function normalizeProspectName(name: string) {
   return name.trim().toLowerCase().replace(/\s+/g, " ")
 }
@@ -47,23 +76,42 @@ export async function createDealer(formData: FormData) {
 
   const name = String(formData.get("name") ?? "").trim()
   const businessType = String(formData.get("businessType") ?? "").trim()
-  const contactPhoneRaw = String(formData.get("contactPhone") ?? "").trim()
+  const phoneRaw = String(formData.get("phone") ?? formData.get("contactPhone") ?? "").trim()
+  const whatsappPhoneRaw = String(formData.get("whatsappPhone") ?? "").trim()
+  const instagramRaw = String(formData.get("instagram") ?? "").trim()
   const location = String(formData.get("location") ?? "").trim()
   const companyType = String(formData.get("companyType") ?? "").trim()
-  const contactPhone = sanitizePhone(contactPhoneRaw)
+  const phone = sanitizePhone(phoneRaw)
+  const whatsappPhone = sanitizePhone(whatsappPhoneRaw)
+  const instagram = sanitizeInstagramHandle(instagramRaw)
+  const contactMethod = resolveContactMethod(whatsappPhone, instagram)
 
   if (!name) {
     return { success: false, error: "Name is required." } satisfies ActionResult
   }
 
-  if (!contactPhone) {
+  if (!phone) {
     return { success: false, error: "Contact phone is required." } satisfies ActionResult
   }
 
-  if (!isValidDominicanPhone(contactPhoneRaw)) {
+  if (!isValidDominicanPhone(phoneRaw)) {
     return {
       success: false,
       error: "Phone must be a valid Dominican number.",
+    } satisfies ActionResult
+  }
+
+  if (whatsappPhoneRaw && !whatsappPhone) {
+    return {
+      success: false,
+      error: "WhatsApp phone is invalid.",
+    } satisfies ActionResult
+  }
+
+  if (whatsappPhoneRaw && !isValidDominicanPhone(whatsappPhoneRaw)) {
+    return {
+      success: false,
+      error: "WhatsApp phone must be a valid Dominican number.",
     } satisfies ActionResult
   }
 
@@ -71,10 +119,15 @@ export async function createDealer(formData: FormData) {
     return { success: false, error: "All fields are required." } satisfies ActionResult
   }
 
-  const duplicate = await prisma.dealer.findUnique({
+  const duplicate = await prisma.dealer.findFirst({
     where: {
-      contactPhone,
+      OR: [
+        { phone },
+        ...(whatsappPhone ? [{ whatsappPhone }] : []),
+        ...(instagram ? [{ instagram }] : []),
+      ],
     },
+    select: { id: true },
   })
 
   if (duplicate) {
@@ -89,7 +142,10 @@ export async function createDealer(formData: FormData) {
       data: {
         name,
         businessType,
-        contactPhone,
+        phone,
+        whatsappPhone: whatsappPhone || null,
+        instagram: instagram || null,
+        contactMethod,
         location,
         companyType,
         createdById: session.user.id,
@@ -151,7 +207,9 @@ type UpdateDealerInput = {
   id: string
   name: string
   businessType: string
-  contactPhone: string
+  phone: string
+  whatsappPhone: string
+  instagram: string
   location: string
   companyType: string
 }
@@ -166,10 +224,15 @@ export async function updateDealer(input: UpdateDealerInput) {
   const id = input.id.trim()
   const name = input.name.trim()
   const businessType = input.businessType.trim()
-  const contactPhoneRaw = input.contactPhone.trim()
+  const phoneRaw = input.phone.trim()
+  const whatsappPhoneRaw = input.whatsappPhone.trim()
+  const instagramRaw = input.instagram.trim()
   const location = input.location.trim()
   const companyType = input.companyType.trim()
-  const contactPhone = sanitizePhone(contactPhoneRaw)
+  const phone = sanitizePhone(phoneRaw)
+  const whatsappPhone = sanitizePhone(whatsappPhoneRaw)
+  const instagram = sanitizeInstagramHandle(instagramRaw)
+  const contactMethod = resolveContactMethod(whatsappPhone, instagram)
 
   if (!id) {
     return { success: false, error: "ID de prospecto inválido." } satisfies ActionResult
@@ -182,24 +245,41 @@ export async function updateDealer(input: UpdateDealerInput) {
     } satisfies ActionResult
   }
 
-  if (!contactPhone) {
+  if (!phone) {
     return {
       success: false,
       error: "El teléfono es obligatorio.",
     } satisfies ActionResult
   }
 
-  if (!isValidDominicanPhone(contactPhoneRaw)) {
+  if (!isValidDominicanPhone(phoneRaw)) {
     return {
       success: false,
       error: "El teléfono debe ser dominicano y válido.",
     } satisfies ActionResult
   }
 
+  if (whatsappPhoneRaw && !whatsappPhone) {
+    return {
+      success: false,
+      error: "El WhatsApp no es válido.",
+    } satisfies ActionResult
+  }
+
+  if (whatsappPhoneRaw && !isValidDominicanPhone(whatsappPhoneRaw)) {
+    return {
+      success: false,
+      error: "El WhatsApp debe ser dominicano y válido.",
+    } satisfies ActionResult
+  }
+
   const duplicate = await prisma.dealer.findFirst({
     where: {
-      
-      contactPhone,
+      OR: [
+        { phone },
+        ...(whatsappPhone ? [{ whatsappPhone }] : []),
+        ...(instagram ? [{ instagram }] : []),
+      ],
       id: {
         not: id,
       },
@@ -222,7 +302,10 @@ export async function updateDealer(input: UpdateDealerInput) {
     data: {
       name,
       businessType,
-      contactPhone,
+      phone,
+      whatsappPhone: whatsappPhone || null,
+      instagram: instagram || null,
+      contactMethod,
       location,
       companyType,
     },
@@ -339,22 +422,42 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
     const incoming = rows.map((row) => ({
       name: row.name.trim(),
       businessType: row.businessType.trim(),
-      contactPhoneRaw: row.contactPhone.trim(),
+      phoneRaw: row.phone.trim(),
+      whatsappPhoneRaw: row.whatsappPhone.trim(),
+      instagramRaw: row.instagram.trim(),
       location: row.location.trim(),
       companyType: row.companyType.trim(),
+      contactMethodRaw: row.contactMethod,
     }))
 
     const phones = incoming
-      .map((row) => sanitizePhone(row.contactPhoneRaw))
+      .map((row) => sanitizePhone(row.phoneRaw))
+      .filter(Boolean)
+
+    const whatsappPhones = incoming
+      .map((row) => sanitizePhone(row.whatsappPhoneRaw))
+      .filter(Boolean)
+
+    const instagramHandles = incoming
+      .map((row) => sanitizeInstagramHandle(row.instagramRaw))
       .filter(Boolean)
 
     const existing = await tx.dealer.findMany({
       where: {
-        
         OR: [
           {
-            contactPhone: {
+            phone: {
               in: phones,
+            },
+          },
+          {
+            whatsappPhone: {
+              in: whatsappPhones,
+            },
+          },
+          {
+            instagram: {
+              in: instagramHandles,
             },
           },
           {
@@ -365,21 +468,33 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
         ],
       },
       select: {
-        contactPhone: true,
+        phone: true,
+        whatsappPhone: true,
+        instagram: true,
         name: true,
       },
     })
 
-    const existingPhones = new Set(existing.map((dealer) => dealer.contactPhone))
+    const existingPhones = new Set(existing.map((dealer) => dealer.phone))
+    const existingWhatsappPhones = new Set(
+      existing.map((dealer) => dealer.whatsappPhone).filter(Boolean)
+    )
+    const existingInstagramHandles = new Set(
+      existing.map((dealer) => dealer.instagram).filter(Boolean)
+    )
     const existingNames = new Set(
       existing.map((dealer) => normalizeProspectName(dealer.name))
     )
 
     const seenPhones = new Set<string>()
+    const seenWhatsappPhones = new Set<string>()
+    const seenInstagramHandles = new Set<string>()
     const seenNames = new Set<string>()
 
     const validRows = incoming.filter((row) => {
-      const sanitizedPhone = sanitizePhone(row.contactPhoneRaw)
+      const sanitizedPhone = sanitizePhone(row.phoneRaw)
+      const sanitizedWhatsappPhone = sanitizePhone(row.whatsappPhoneRaw)
+      const sanitizedInstagram = sanitizeInstagramHandle(row.instagramRaw)
       const normalizedName = normalizeProspectName(row.name)
 
       const isInvalid =
@@ -388,7 +503,8 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
         !row.location ||
         !row.companyType ||
         !sanitizedPhone ||
-        !isValidDominicanPhone(row.contactPhoneRaw)
+        !isValidDominicanPhone(row.phoneRaw) ||
+        (row.whatsappPhoneRaw && !isValidDominicanPhone(row.whatsappPhoneRaw))
 
       if (isInvalid) {
         return false
@@ -396,6 +512,12 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
 
       const isDuplicate =
         existingPhones.has(sanitizedPhone) ||
+        (sanitizedWhatsappPhone &&
+          (existingWhatsappPhones.has(sanitizedWhatsappPhone) ||
+            seenWhatsappPhones.has(sanitizedWhatsappPhone))) ||
+        (sanitizedInstagram &&
+          (existingInstagramHandles.has(sanitizedInstagram) ||
+            seenInstagramHandles.has(sanitizedInstagram))) ||
         existingNames.has(normalizedName) ||
         seenPhones.has(sanitizedPhone) ||
         seenNames.has(normalizedName)
@@ -405,6 +527,12 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
       }
 
       seenPhones.add(sanitizedPhone)
+      if (sanitizedWhatsappPhone) {
+        seenWhatsappPhones.add(sanitizedWhatsappPhone)
+      }
+      if (sanitizedInstagram) {
+        seenInstagramHandles.add(sanitizedInstagram)
+      }
       seenNames.add(normalizedName)
 
       return true
@@ -418,14 +546,32 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
     }
 
     const createResult = await tx.dealer.createMany({
-      data: validRows.map((row) => ({
-        name: row.name,
-        businessType: row.businessType,
-        contactPhone: sanitizePhone(row.contactPhoneRaw),
-        location: row.location,
-        companyType: row.companyType,
-        createdById: session.user.id,
-      })),
+      data: validRows.map((row) => {
+        const sanitizedWhatsappPhone = sanitizePhone(row.whatsappPhoneRaw)
+        const sanitizedInstagram = sanitizeInstagramHandle(row.instagramRaw)
+        const computedContactMethod = resolveContactMethod(
+          sanitizedWhatsappPhone,
+          sanitizedInstagram
+        )
+
+        return {
+          name: row.name,
+          businessType: row.businessType,
+          phone: sanitizePhone(row.phoneRaw),
+          whatsappPhone: sanitizedWhatsappPhone || null,
+          instagram: sanitizedInstagram || null,
+          contactMethod:
+            row.contactMethodRaw === "whatsapp" ||
+            row.contactMethodRaw === "instagram" ||
+            row.contactMethodRaw === "both" ||
+            row.contactMethodRaw === "none"
+              ? row.contactMethodRaw
+              : computedContactMethod,
+          location: row.location,
+          companyType: row.companyType,
+          createdById: session.user.id,
+        }
+      }),
       skipDuplicates: true,
     })
 

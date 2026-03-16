@@ -3,15 +3,22 @@
 import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
-import { updateDealerContacted, deleteMultipleDealers } from "@/app/actions"
+import { deleteMultipleDealers, updateDealerContacted } from "@/app/actions"
 import { ProspectDetailDialog } from "@/components/prospect-detail-dialog"
-import { ProspectsExportDialog } from "@/components/prospects-export-dialog"
 import { ProspectForm } from "@/components/prospect-form"
+import { ProspectsExportDialog } from "@/components/prospects-export-dialog"
 import { ProspectsImportDialog } from "@/components/prospects-import-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -20,22 +27,44 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { renderMessageTemplate } from "@/lib/message-template"
 import type { MessageTemplate } from "@/types/message-template"
 import type { Prospect } from "@/types/prospect"
+import { Instagram, MessageCircle, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { AutoRefresh } from "./auto-refresh"
-import { Trash2 } from "lucide-react"
 
-type FilterMode = "all" | "contacted" | "not-contacted"
+type StatusFilterMode = "all" | "contacted" | "not-contacted"
+type ContactFilterMode =
+  | "all"
+  | "has-whatsapp"
+  | "has-instagram"
+  | "has-both"
+  | "no-contact"
 
 type ProspectsTableProps = {
   prospects: Prospect[]
   templates: MessageTemplate[]
 }
 
+function getWhatsAppUrl(phone: string, message: string) {
+  return `https://web.whatsapp.com/send?phone=${phone.replace(/\D/g, "")}&text=${encodeURIComponent(message)}`
+}
+
+function getInstagramUrl(handle: string) {
+  return `https://instagram.com/${handle}`
+}
+
 export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
   const router = useRouter()
-  const [filterMode, setFilterMode] = useState<FilterMode>("all")
+  const [statusFilterMode, setStatusFilterMode] = useState<StatusFilterMode>("all")
+  const [contactFilterMode, setContactFilterMode] = useState<ContactFilterMode>("all")
   const [search, setSearch] = useState("")
   const [isUpdating, startUpdating] = useTransition()
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null)
@@ -43,68 +72,100 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isDeleting, startDeleting] = useTransition()
 
+  const defaultMessage = useMemo(() => {
+    if (templates.length === 0) {
+      return "Hola"
+    }
+
+    const firstTemplate = templates[0]
+    return firstTemplate.messageTemplate
+  }, [templates])
+
   const filteredProspects = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
 
     return prospects.filter((prospect) => {
-      const matchesFilter =
-        filterMode === "all" ||
-        (filterMode === "contacted" && prospect.contacted) ||
-        (filterMode === "not-contacted" && !prospect.contacted)
+      const hasWhatsapp = Boolean(prospect.whatsappPhone)
+      const hasInstagram = Boolean(prospect.instagram)
+
+      const matchesStatusFilter =
+        statusFilterMode === "all" ||
+        (statusFilterMode === "contacted" && prospect.contacted) ||
+        (statusFilterMode === "not-contacted" && !prospect.contacted)
+
+      const matchesContactFilter =
+        contactFilterMode === "all" ||
+        (contactFilterMode === "has-whatsapp" && hasWhatsapp) ||
+        (contactFilterMode === "has-instagram" && hasInstagram) ||
+        (contactFilterMode === "has-both" && hasWhatsapp && hasInstagram) ||
+        (contactFilterMode === "no-contact" && !hasWhatsapp && !hasInstagram)
 
       const matchesSearch =
-        normalizedSearch.length === 0 ||
-        prospect.name.toLowerCase().includes(normalizedSearch)
+        normalizedSearch.length === 0 || prospect.name.toLowerCase().includes(normalizedSearch)
 
-      return matchesFilter && matchesSearch
+      return matchesStatusFilter && matchesContactFilter && matchesSearch
     })
-  }, [filterMode, prospects, search])
+  }, [contactFilterMode, prospects, search, statusFilterMode])
 
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredProspects.length) {
       setSelectedIds(new Set())
     } else {
-      setSelectedIds(new Set(filteredProspects.map((p) => p.id)))
+      setSelectedIds(new Set(filteredProspects.map((prospect) => prospect.id)))
     }
   }
 
   const toggleSelect = (id: string) => {
     const newSelected = new Set(selectedIds)
+
     if (newSelected.has(id)) {
       newSelected.delete(id)
     } else {
       newSelected.add(id)
     }
+
     setSelectedIds(newSelected)
   }
 
   const handleDeleteSelected = () => {
-    if (selectedIds.size === 0) return
-    const confirm = window.confirm(`¿Estás seguro de eliminar ${selectedIds.size} prospecto(s)?`)
-    if (!confirm) return
+    if (selectedIds.size === 0) {
+      return
+    }
+
+    const shouldDelete = window.confirm(
+      `¿Estás seguro de eliminar ${selectedIds.size} prospecto(s)?`
+    )
+
+    if (!shouldDelete) {
+      return
+    }
 
     startDeleting(async () => {
       const result = await deleteMultipleDealers(Array.from(selectedIds))
-      if (result.success) {
-        toast.success(`${selectedIds.size} prospecto(s) eliminado(s)`)
-        setSelectedIds(new Set())
-        router.refresh()
-      } else {
+
+      if (!result.success) {
         toast.error(result.error || "Error al eliminar")
+        return
       }
+
+      toast.success(`${selectedIds.size} prospecto(s) eliminado(s)`)
+      setSelectedIds(new Set())
+      router.refresh()
     })
   }
 
-  const filterButtonStyle = (mode: FilterMode) =>
-    mode === filterMode ? "default" : "outline"
+  const statusFilterButtonStyle = (mode: StatusFilterMode) =>
+    mode === statusFilterMode ? "default" : "outline"
 
-  const selectedProspectsData = useMemo(() => {
-    return prospects.filter(p => selectedIds.has(p.id))
-  }, [prospects, selectedIds])
+  const selectedProspectsData = useMemo(
+    () => prospects.filter((prospect) => selectedIds.has(prospect.id)),
+    [prospects, selectedIds]
+  )
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 md:p-6">
       <AutoRefresh interval={5000} />
+
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Posibles Clientes</h1>
@@ -112,12 +173,17 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
             Gestiona prospectos que podrían contratar tu ERP.
           </p>
         </div>
-        
+
         {selectedIds.size > 0 ? (
-          <div className="flex flex-wrap items-center gap-2 animate-in fade-in zoom-in p-2 bg-muted/50 rounded-lg border">
-            <span className="text-sm px-2 font-medium">{selectedIds.size} seleccionados</span>
-            <Button variant="destructive" size="sm" onClick={handleDeleteSelected} disabled={isDeleting}>
-              <Trash2 className="w-4 h-4 mr-1" />
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/50 p-2">
+            <span className="px-2 text-sm font-medium">{selectedIds.size} seleccionados</span>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteSelected}
+              disabled={isDeleting}
+            >
+              <Trash2 className="mr-1 h-4 w-4" />
               Eliminar
             </Button>
             <ProspectsExportDialog prospects={selectedProspectsData} />
@@ -136,117 +202,205 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-wrap gap-2">
-          <Button variant={filterButtonStyle("all")} onClick={() => setFilterMode("all")}>
+          <Button
+            variant={statusFilterButtonStyle("all")}
+            onClick={() => setStatusFilterMode("all")}
+          >
             Todos
           </Button>
           <Button
-            variant={filterButtonStyle("contacted")}
-            onClick={() => setFilterMode("contacted")}
+            variant={statusFilterButtonStyle("contacted")}
+            onClick={() => setStatusFilterMode("contacted")}
           >
             Contactados
           </Button>
           <Button
-            variant={filterButtonStyle("not-contacted")}
-            onClick={() => setFilterMode("not-contacted")}
+            variant={statusFilterButtonStyle("not-contacted")}
+            onClick={() => setStatusFilterMode("not-contacted")}
           >
             Pendientes
           </Button>
         </div>
 
-        <Input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Buscar por nombre"
-          className="w-full md:w-72"
-        />
+        <div className="grid w-full gap-3 md:w-auto md:grid-cols-[220px_240px]">
+          <Select
+            value={contactFilterMode}
+            onValueChange={(value) => setContactFilterMode(value as ContactFilterMode)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Filter by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Filter by: Todos</SelectItem>
+              <SelectItem value="has-whatsapp">Has WhatsApp</SelectItem>
+              <SelectItem value="has-instagram">Has Instagram</SelectItem>
+              <SelectItem value="has-both">Has Both</SelectItem>
+              <SelectItem value="no-contact">No Contact Method</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar por nombre"
+          />
+        </div>
       </div>
 
-      <div className="rounded-xl border bg-card shadow-sm">
-        <Table className="min-w-250">
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[50px]">
-                <Checkbox
-                  checked={filteredProspects.length > 0 && selectedIds.size === filteredProspects.length}
-                  onCheckedChange={toggleSelectAll}
-                  aria-label="Seleccionar todos"
-                />
-              </TableHead>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Tipo de negocio</TableHead>
-              <TableHead>Teléfono</TableHead>
-              <TableHead>Ubicación</TableHead>
-              <TableHead>Tipo de empresa</TableHead>
-              <TableHead>Estado</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredProspects.length === 0 ? (
+      <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
+        <TooltipProvider>
+          <Table className="min-w-280">
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
-                  No hay prospectos que coincidan con los filtros.
-                </TableCell>
+                <TableHead className="w-12.5">
+                  <Checkbox
+                    checked={
+                      filteredProspects.length > 0 &&
+                      selectedIds.size === filteredProspects.length
+                    }
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Seleccionar todos"
+                  />
+                </TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Tipo de negocio</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>WhatsApp</TableHead>
+                <TableHead>Instagram</TableHead>
+                <TableHead>Ubicación</TableHead>
+                <TableHead>Tipo de empresa</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Acciones</TableHead>
               </TableRow>
-            ) : (
-              filteredProspects.map((prospect) => (
-                <TableRow
-                  key={prospect.id}
-                  className={`cursor-pointer ${selectedIds.has(prospect.id) ? 'bg-muted/50' : ''}`}
-                  onDoubleClick={() => {
-                    setSelectedProspect(prospect)
-                    setIsDetailOpen(true)
-                  }}
-                >
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <Checkbox
-                      checked={selectedIds.has(prospect.id)}
-                      onCheckedChange={() => toggleSelect(prospect.id)}
-                      aria-label={`Seleccionar ${prospect.name}`}
-                    />
-                  </TableCell>
-                  <TableCell>{prospect.name}</TableCell>
-                  <TableCell>{prospect.businessType}</TableCell>
-                  <TableCell>{prospect.contactPhone}</TableCell>
-                  <TableCell>{prospect.location}</TableCell>
-                  <TableCell>{prospect.companyType}</TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        checked={prospect.contacted}
-                        disabled={isUpdating}
-                        onCheckedChange={(checked) => {
-                          startUpdating(async () => {
-                            const result = await updateDealerContacted(
-                              prospect.id,
-                              checked === true
-                            )
-
-                            if (result.success) {
-                              router.refresh()
-                            }
-                          })
-                        }}
-                        aria-label={`Marcar ${prospect.name} como contactado`}
-                      />
-                      {prospect.contacted ? (
-                        <Badge className="border-transparent bg-chart-2/20 text-chart-2">
-                          Contactado
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">Pendiente</Badge>
-                      )}
-                    </div>
+            </TableHeader>
+            <TableBody>
+              {filteredProspects.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
+                    No hay prospectos que coincidan con los filtros.
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                filteredProspects.map((prospect) => {
+                  const hasWhatsapp = Boolean(prospect.whatsappPhone)
+                  const hasInstagram = Boolean(prospect.instagram)
+
+                  return (
+                    <TableRow
+                      key={prospect.id}
+                      className={`cursor-pointer ${selectedIds.has(prospect.id) ? "bg-muted/50" : ""}`}
+                      onDoubleClick={() => {
+                        setSelectedProspect(prospect)
+                        setIsDetailOpen(true)
+                      }}
+                    >
+                      <TableCell onClick={(event) => event.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedIds.has(prospect.id)}
+                          onCheckedChange={() => toggleSelect(prospect.id)}
+                          aria-label={`Seleccionar ${prospect.name}`}
+                        />
+                      </TableCell>
+                      <TableCell>{prospect.name}</TableCell>
+                      <TableCell>{prospect.businessType}</TableCell>
+                      <TableCell>{prospect.phone}</TableCell>
+                      <TableCell>{prospect.whatsappPhone ?? "-"}</TableCell>
+                      <TableCell>{prospect.instagram ? `@${prospect.instagram}` : "-"}</TableCell>
+                      <TableCell>{prospect.location}</TableCell>
+                      <TableCell>{prospect.companyType}</TableCell>
+                      <TableCell onClick={(event) => event.stopPropagation()}>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={prospect.contacted}
+                            disabled={isUpdating}
+                            onCheckedChange={(checked) => {
+                              startUpdating(async () => {
+                                const result = await updateDealerContacted(
+                                  prospect.id,
+                                  checked === true
+                                )
+
+                                if (result.success) {
+                                  router.refresh()
+                                }
+                              })
+                            }}
+                            aria-label={`Marcar ${prospect.name} como contactado`}
+                          />
+                          {prospect.contacted ? (
+                            <Badge className="border-transparent bg-chart-2/20 text-chart-2">
+                              Contactado
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">Pendiente</Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell onClick={(event) => event.stopPropagation()}>
+                        <div className="flex items-center gap-2">
+                          {hasWhatsapp ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="outline"
+                                  className="h-9 w-9 hover:bg-chart-2/10"
+                                  asChild
+                                >
+                                  <a
+                                    href={getWhatsAppUrl(
+                                      prospect.whatsappPhone!,
+                                      renderMessageTemplate(defaultMessage, prospect)
+                                    )}
+                                  >
+                                    <MessageCircle className="h-4 w-4 text-chart-2" />
+                                    <span className="sr-only">Open WhatsApp</span>
+                                  </a>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Open WhatsApp</TooltipContent>
+                            </Tooltip>
+                          ) : null}
+
+                          {hasInstagram ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="outline"
+                                  className="h-9 w-9 hover:bg-chart-5/10"
+                                  asChild
+                                >
+                                  <a
+                                    href={getInstagramUrl(prospect.instagram!)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    <Instagram className="h-4 w-4 text-chart-5" />
+                                    <span className="sr-only">Open Instagram</span>
+                                  </a>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Open Instagram</TooltipContent>
+                            </Tooltip>
+                          ) : null}
+
+                          {!hasWhatsapp && !hasInstagram ? (
+                            <Badge variant="secondary">No contact method</Badge>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              )}
+            </TableBody>
+          </Table>
+        </TooltipProvider>
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Doble click sobre un prospecto para ver detalle, editar, enviar WhatsApp
- o eliminar.
+        Doble click sobre un prospecto para ver detalle, editar, contactar o eliminar.
       </p>
 
       <ProspectDetailDialog

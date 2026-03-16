@@ -13,7 +13,7 @@ function resolveFieldValue(context: TemplateContext, field: string) {
     case "business_type":
       return context.businessType
     case "phone":
-      return context.contactPhone
+      return context.whatsappPhone ?? context.phone
     case "location":
       return context.location
     case "company_size":

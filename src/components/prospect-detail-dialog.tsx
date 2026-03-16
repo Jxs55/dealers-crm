@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useTransition } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
@@ -37,7 +37,9 @@ type FormState = {
   id: string
   name: string
   businessType: string
-  contactPhone: string
+  phone: string
+  whatsappPhone: string
+  instagram: string
   location: string
   companyType: string
 }
@@ -46,7 +48,9 @@ const EMPTY_FORM: FormState = {
   id: "",
   name: "",
   businessType: "",
-  contactPhone: "",
+  phone: "",
+  whatsappPhone: "",
+  instagram: "",
   location: "",
   companyType: "",
 }
@@ -63,47 +67,67 @@ export function ProspectDetailDialog({
   const [isDeleting, startDeleting] = useTransition()
   const [formError, setFormError] = useState("")
   const [phoneError, setPhoneError] = useState("")
+  const [whatsappError, setWhatsappError] = useState("")
   const [formValues, setFormValues] = useState<FormState>(EMPTY_FORM)
-
-  useEffect(() => {
-    if (!prospect) {
-      setFormValues(EMPTY_FORM)
-      setIsEditing(false)
-      setFormError("")
-      setPhoneError("")
-      return
-    }
-
-    setFormValues({
-      id: prospect.id,
-      name: prospect.name,
-      businessType: prospect.businessType,
-      contactPhone: formatPhoneDisplay(prospect.contactPhone),
-      location: prospect.location,
-      companyType: prospect.companyType,
-    })
-    setIsEditing(false)
-    setFormError("")
-    setPhoneError("")
-  }, [prospect])
 
   if (!prospect) {
     return null
   }
 
+  function startEditing() {
+    setFormValues({
+      id: prospect.id,
+      name: prospect.name,
+      businessType: prospect.businessType,
+      phone: formatPhoneDisplay(prospect.phone),
+      whatsappPhone: formatPhoneDisplay(prospect.whatsappPhone ?? ""),
+      instagram: prospect.instagram ?? "",
+      location: prospect.location,
+      companyType: prospect.companyType,
+    })
+    setFormError("")
+    setPhoneError("")
+    setWhatsappError("")
+    setIsEditing(true)
+  }
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen) {
+      setIsEditing(false)
+      setFormError("")
+      setPhoneError("")
+      setWhatsappError("")
+      setFormValues(EMPTY_FORM)
+    }
+
+    onOpenChange(nextOpen)
+  }
+
   function handleSave() {
     setFormError("")
     setPhoneError("")
+    setWhatsappError("")
 
-    const sanitizedPhone = sanitizePhone(formValues.contactPhone)
+    const sanitizedPhone = sanitizePhone(formValues.phone)
+    const sanitizedWhatsapp = sanitizePhone(formValues.whatsappPhone)
 
     if (!sanitizedPhone) {
       setPhoneError("El teléfono es obligatorio.")
       return
     }
 
-    if (!isValidDominicanPhone(formValues.contactPhone)) {
+    if (!isValidDominicanPhone(formValues.phone)) {
       setPhoneError("El teléfono debe ser dominicano y válido.")
+      return
+    }
+
+    if (formValues.whatsappPhone.trim() && !sanitizedWhatsapp) {
+      setWhatsappError("El número de WhatsApp no es válido.")
+      return
+    }
+
+    if (formValues.whatsappPhone.trim() && !isValidDominicanPhone(formValues.whatsappPhone)) {
+      setWhatsappError("El WhatsApp debe ser dominicano y válido.")
       return
     }
 
@@ -148,7 +172,7 @@ export function ProspectDetailDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Detalle de Posible Cliente</DialogTitle>
@@ -184,11 +208,11 @@ export function ProspectDetailDialog({
                 <FieldLabel htmlFor="prospectPhone">Teléfono</FieldLabel>
                 <Input
                   id="prospectPhone"
-                  value={formValues.contactPhone}
+                  value={formValues.phone}
                   onChange={(event) => {
                     setFormValues((previous) => ({
                       ...previous,
-                      contactPhone: formatPhoneDisplay(event.target.value),
+                      phone: formatPhoneDisplay(event.target.value),
                     }))
 
                     if (phoneError) {
@@ -199,6 +223,35 @@ export function ProspectDetailDialog({
                 />
                 <FieldError>{phoneError}</FieldError>
               </Field>
+              <Field>
+                <FieldLabel htmlFor="prospectWhatsapp">WhatsApp</FieldLabel>
+                <Input
+                  id="prospectWhatsapp"
+                  value={formValues.whatsappPhone}
+                  onChange={(event) => {
+                    setFormValues((previous) => ({
+                      ...previous,
+                      whatsappPhone: formatPhoneDisplay(event.target.value),
+                    }))
+
+                    if (whatsappError) {
+                      setWhatsappError("")
+                    }
+                  }}
+                  placeholder="+1 809 555 1234 (opcional)"
+                />
+                <FieldError>{whatsappError}</FieldError>
+              </Field>
+              <Input
+                value={formValues.instagram}
+                onChange={(event) =>
+                  setFormValues((previous) => ({
+                    ...previous,
+                    instagram: event.target.value,
+                  }))
+                }
+                placeholder="Instagram (ej: autooutletrd)"
+              />
               <Input
                 value={formValues.location}
                 onChange={(event) =>
@@ -230,7 +283,13 @@ export function ProspectDetailDialog({
                 <span className="font-medium">Tipo de negocio:</span> {prospect.businessType}
               </p>
               <p>
-                <span className="font-medium">Teléfono:</span> {prospect.contactPhone}
+                <span className="font-medium">Teléfono:</span> {prospect.phone}
+              </p>
+              <p>
+                <span className="font-medium">WhatsApp:</span> {prospect.whatsappPhone ?? "No definido"}
+              </p>
+              <p>
+                <span className="font-medium">Instagram:</span> {prospect.instagram ? `@${prospect.instagram}` : "No definido"}
               </p>
               <p>
                 <span className="font-medium">Ubicación:</span> {prospect.location}
@@ -272,10 +331,23 @@ export function ProspectDetailDialog({
               </>
             ) : (
               <>
-                <Button variant="outline" onClick={() => setIsEditing(true)}>
+                <Button variant="outline" onClick={startEditing}>
                   Editar
                 </Button>
-                <OpenWhatsAppButton prospect={prospect} templates={templates} />
+                {prospect.whatsappPhone ? (
+                  <OpenWhatsAppButton prospect={prospect} templates={templates} />
+                ) : null}
+                {prospect.instagram ? (
+                  <Button variant="outline" asChild>
+                    <a
+                      href={`https://instagram.com/${prospect.instagram}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open Instagram
+                    </a>
+                  </Button>
+                ) : null}
               </>
             )}
           </div>

@@ -57,7 +57,10 @@ export function ProspectsExportDialog({ prospects }: ProspectsExportDialogProps)
       prospects.map((prospect) => ({
         Nombre: prospect.name,
         "Tipo de Negocio": prospect.businessType,
-        Teléfono: prospect.contactPhone,
+        Teléfono: prospect.phone,
+        WhatsApp: prospect.whatsappPhone ?? "",
+        Instagram: prospect.instagram ?? "",
+        "Método de contacto": prospect.contactMethod,
         Ubicación: prospect.location,
         "Tipo de Empresa": prospect.companyType,
         Contactado: prospect.contacted ? "Sí" : "No",
@@ -163,6 +166,9 @@ export function ProspectsExportDialog({ prospects }: ProspectsExportDialogProps)
                   <TableHead>Nombre</TableHead>
                   <TableHead>Tipo de Negocio</TableHead>
                   <TableHead>Teléfono</TableHead>
+                  <TableHead>WhatsApp</TableHead>
+                  <TableHead>Instagram</TableHead>
+                  <TableHead>Método de contacto</TableHead>
                   <TableHead>Ubicación</TableHead>
                   <TableHead>Tipo de Empresa</TableHead>
                   <TableHead>Contactado</TableHead>
@@ -171,7 +177,7 @@ export function ProspectsExportDialog({ prospects }: ProspectsExportDialogProps)
               <TableBody>
                 {exportRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="py-6 text-center text-muted-foreground">
                       No hay datos para exportar.
                     </TableCell>
                   </TableRow>
@@ -181,6 +187,9 @@ export function ProspectsExportDialog({ prospects }: ProspectsExportDialogProps)
                       <TableCell>{row.Nombre}</TableCell>
                       <TableCell>{row["Tipo de Negocio"]}</TableCell>
                       <TableCell>{row.Teléfono}</TableCell>
+                      <TableCell>{row.WhatsApp}</TableCell>
+                      <TableCell>{row.Instagram}</TableCell>
+                      <TableCell>{row["Método de contacto"]}</TableCell>
                       <TableCell>{row["Ubicación"]}</TableCell>
                       <TableCell>{row["Tipo de Empresa"]}</TableCell>
                       <TableCell>{row.Contactado}</TableCell>

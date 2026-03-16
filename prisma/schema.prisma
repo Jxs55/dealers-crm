@@ -26,7 +26,10 @@ model Dealer {
   id           String   @id @default(cuid())
   name         String
   businessType String
-  contactPhone String
+  phone        String
+  whatsappPhone String? @map("whatsapp_phone")
+  instagram    String?
+  contactMethod String  @default("none") @map("contact_method")
   location     String
   companyType  String
   contacted    Boolean  @default(false)
@@ -35,7 +38,9 @@ model Dealer {
   createdById  String
   createdBy    User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
 
-  @@unique([contactPhone])
+  @@unique([phone])
+  @@unique([whatsappPhone])
+  @@unique([instagram])
 }
 
 model MessageTemplate {

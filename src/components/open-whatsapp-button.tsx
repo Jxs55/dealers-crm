@@ -43,7 +43,7 @@ type StatusChoice = "no-change" | "contacted" | "pending"
 function getWhatsAppUrl(phone: string, message: string) {
   const normalizedPhone = phone.replace(/\D/g, "")
   const encodedMessage = encodeURIComponent(message)
-  return `https://wa.me/${normalizedPhone}?text=${encodedMessage}`
+  return `https://web.whatsapp.com/send?phone=${normalizedPhone}&text=${encodedMessage}`
 }
 
 export function OpenWhatsAppButton({ prospect, templates }: OpenWhatsAppButtonProps) {
@@ -106,6 +106,11 @@ export function OpenWhatsAppButton({ prospect, templates }: OpenWhatsAppButtonPr
 
   function handleConfirmStatusAndOpen() {
     startSubmitting(async () => {
+      if (!prospect.whatsappPhone) {
+        toast.error("Este prospecto no tiene WhatsApp configurado.")
+        return
+      }
+
       if (statusChoice !== "no-change") {
         const response = await updateDealerStatusForWhatsApp({
           dealerId: prospect.id,
@@ -120,8 +125,8 @@ export function OpenWhatsAppButton({ prospect, templates }: OpenWhatsAppButtonPr
         router.refresh()
       }
 
-      const url = getWhatsAppUrl(prospect.contactPhone, preparedMessage)
-      window.open(url, "_blank", "noopener,noreferrer")
+      const url = getWhatsAppUrl(prospect.whatsappPhone, preparedMessage)
+      window.location.assign(url)
       closeAllDialogs()
     })
   }
