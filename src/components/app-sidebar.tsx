@@ -7,6 +7,7 @@ import { Settings, UserPlus, Users } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -15,6 +16,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { UserNav } from "@/components/user-nav"
 
 type NavigationItem = {
   label: string
@@ -28,14 +30,19 @@ const navigationItems: NavigationItem[] = [
   { label: "Configuración", href: "/configuracion", icon: Settings },
 ]
 
-export function AppSidebar() {
+type AppSidebarProps = {
+  userName: string
+  userEmail: string
+}
+
+export function AppSidebar({ userName, userEmail }: AppSidebarProps) {
   const pathname = usePathname()
 
   return (
     <Sidebar collapsible="offcanvas" variant="inset">
       <SidebarHeader className="px-3 py-4">
-        <h2 className="text-base font-semibold">CRM ERP</h2>
-        <p className="text-xs text-muted-foreground">Panel principal</p>
+        <h2 className="text-base font-semibold">ORBIZ</h2>
+        <p className="text-xs text-muted-foreground">Sistema de Control</p>
       </SidebarHeader>
 
       <SidebarContent>
@@ -62,6 +69,10 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter className="border-t p-2">
+        <UserNav userName={userName} userEmail={userEmail} />
+      </SidebarFooter>
     </Sidebar>
   )
 }

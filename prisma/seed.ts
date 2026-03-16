@@ -44,6 +44,15 @@ async function main() {
     data: users,
   })
 
+  await prisma.dealer.updateMany({
+    where: {
+      createdById: "system-migration-user",
+    },
+    data: {
+      createdById: "ds",
+    },
+  })
+
   console.log("Seed completed: users ds and jxs are ready.")
 }
 

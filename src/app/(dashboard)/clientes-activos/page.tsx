@@ -1,5 +1,8 @@
+import Link from "next/link"
+
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { activeClients } from "@/lib/active-clients"
 import {
   Table,
   TableBody,
@@ -8,23 +11,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-
-const activeClients = [
-  {
-    company: "Auto Norte SRL",
-    contact: "María Hernández",
-    phone: "18095551234",
-    plan: "Pro",
-    status: "Activo",
-  },
-  {
-    company: "Caribe Motors",
-    contact: "Luis Gómez",
-    phone: "18295552345",
-    plan: "Enterprise",
-    status: "Activo",
-  },
-]
 
 export default function ClientesActivosPage() {
   return (
@@ -50,7 +36,7 @@ export default function ClientesActivosPage() {
           </TableHeader>
           <TableBody>
             {activeClients.map((client) => (
-              <TableRow key={client.company}>
+              <TableRow key={client.id}>
                 <TableCell>{client.company}</TableCell>
                 <TableCell>{client.contact}</TableCell>
                 <TableCell>{client.phone}</TableCell>
@@ -61,7 +47,9 @@ export default function ClientesActivosPage() {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button variant="outline">Ver detalle</Button>
+                  <Button variant="outline" asChild>
+                    <Link href={`/clientes-activos/${client.id}`}>Ver detalle</Link>
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}

@@ -1,5 +1,6 @@
 "use server"
 
+import { hash } from "bcryptjs"
 import { revalidatePath } from "next/cache"
 import { Prisma } from "@prisma/client"
 
@@ -120,6 +121,64 @@ export async function updateDealerContacted(id: string, contacted: boolean) {
 
   revalidatePath("/")
   revalidatePath("/posibles-clientes")
+
+  return { success: true } satisfies ActionResult
+}
+
+export async function updateProfileSettings(formData: FormData) {
+  const session = await getSession()
+
+  if (!session?.user?.id) {
+    return { success: false, error: "You must be logged in." } satisfies ActionResult
+  }
+
+  const name = String(formData.get("name") ?? "").trim()
+  const email = String(formData.get("email") ?? "").trim().toLowerCase()
+  const password = String(formData.get("password") ?? "").trim()
+
+  if (!name) {
+    return { success: false, error: "Name is required." } satisfies ActionResult
+  }
+
+  if (!email) {
+    return { success: false, error: "Email is required." } satisfies ActionResult
+  }
+
+  if (!email.includes("@")) {
+    return { success: false, error: "Email is invalid." } satisfies ActionResult
+  }
+
+  if (password && password.length < 4) {
+    return {
+      success: false,
+      error: "Password must contain at least 4 characters.",
+    } satisfies ActionResult
+  }
+
+  const existingUserWithEmail = await prisma.user.findFirst({
+    where: {
+      email,
+      id: {
+        not: session.user.id,
+      },
+    },
+    select: { id: true },
+  })
+
+  if (existingUserWithEmail) {
+    return { success: false, error: "Email is already in use." } satisfies ActionResult
+  }
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: {
+      name,
+      email,
+      ...(password ? { password: await hash(password, 12) } : {}),
+    },
+  })
+
+  revalidatePath("/configuracion")
 
   return { success: true } satisfies ActionResult
 }
