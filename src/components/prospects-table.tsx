@@ -85,7 +85,7 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
     const normalizedSearch = search.trim().toLowerCase()
 
     return prospects.filter((prospect) => {
-      const hasWhatsapp = Boolean(prospect.whatsappPhone)
+      const hasWhatsapp = Boolean(prospect.phone)
       const hasInstagram = Boolean(prospect.instagram)
 
       const matchesStatusFilter =
@@ -282,7 +282,7 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                 </TableRow>
               ) : (
                 filteredProspects.map((prospect) => {
-                  const hasWhatsapp = Boolean(prospect.whatsappPhone)
+                  const hasWhatsapp = Boolean(prospect.phone)
                   const hasInstagram = Boolean(prospect.instagram)
 
                   return (
@@ -304,7 +304,7 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                       <TableCell>{prospect.name}</TableCell>
                       <TableCell>{prospect.businessType}</TableCell>
                       <TableCell>{prospect.phone}</TableCell>
-                      <TableCell>{prospect.whatsappPhone ?? "-"}</TableCell>
+                      <TableCell>{prospect.phone}</TableCell>
                       <TableCell>{prospect.instagram ? `@${prospect.instagram}` : "-"}</TableCell>
                       <TableCell>{prospect.location}</TableCell>
                       <TableCell>{prospect.companyType}</TableCell>
@@ -349,7 +349,7 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                                 >
                                   <a
                                     href={getWhatsAppUrl(
-                                      prospect.whatsappPhone!,
+                                      prospect.phone,
                                       renderMessageTemplate(defaultMessage, prospect)
                                     )}
                                   >

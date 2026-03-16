@@ -58,7 +58,7 @@ export function ProspectsExportDialog({ prospects }: ProspectsExportDialogProps)
         Nombre: prospect.name,
         "Tipo de Negocio": prospect.businessType,
         Teléfono: prospect.phone,
-        WhatsApp: prospect.whatsappPhone ?? "",
+        WhatsApp: prospect.phone,
         Instagram: prospect.instagram ?? "",
         "Método de contacto": prospect.contactMethod,
         Ubicación: prospect.location,

@@ -39,7 +39,6 @@ type DbField =
   | "name"
   | "business_type"
   | "phone"
-  | "whatsapp_phone"
   | "instagram"
   | "contact_method"
   | "location"
@@ -54,7 +53,6 @@ type CompaniesImportPayload = {
   name: string
   business_type: string
   phone: string
-  whatsapp_phone: string
   instagram: string
   contact_method: string
   location: string
@@ -66,7 +64,6 @@ const DATABASE_FIELDS: Array<{ value: DbField; label: string; required?: boolean
   { value: "name", label: "nombre", required: true },
   { value: "business_type", label: "tipo_negocio" },
   { value: "phone", label: "telefono", required: true },
-  { value: "whatsapp_phone", label: "whatsapp" },
   { value: "instagram", label: "instagram" },
   { value: "contact_method", label: "metodo_contacto" },
   { value: "location", label: "ubicacion" },
@@ -79,8 +76,18 @@ const REQUIRED_FIELDS: DbField[] = ["name", "phone"]
 const FIELD_SUGGESTIONS: Record<DbField, string[]> = {
   name: ["name", "nombre", "empresa", "company", "nombre de la empresa"],
   business_type: ["business type", "tipo negocio", "tipo de negocio", "business"],
-  phone: ["phone", "telefono", "tel", "teléfono", "contact"],
-  whatsapp_phone: ["whatsapp", "whatsapp phone", "whatsapp_phone", "wa", "wa phone"],
+  phone: [
+    "phone",
+    "telefono",
+    "tel",
+    "teléfono",
+    "contact",
+    "whatsapp",
+    "whatsapp phone",
+    "whatsapp_phone",
+    "wa",
+    "wa phone",
+  ],
   instagram: ["instagram", "instagram user", "instagram_user", "ig", "ig user"],
   contact_method: [
     "contact method",
@@ -139,7 +146,6 @@ function buildPayload(rows: CsvRow[], mapping: MappingState): CompaniesImportPay
       name: "",
       business_type: "",
       phone: "",
-      whatsapp_phone: "",
       instagram: "",
       contact_method: "",
       location: "",

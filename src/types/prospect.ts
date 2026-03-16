@@ -5,7 +5,6 @@ export type Prospect = {
   name: string
   businessType: string
   phone: string
-  whatsappPhone: string | null
   instagram: string | null
   contactMethod: ContactMethod
   location: string
@@ -17,7 +16,6 @@ export type ProspectImportInput = {
   name: string
   businessType: string
   phone: string
-  whatsappPhone: string
   instagram: string
   contactMethod: ContactMethod | ""
   location: string

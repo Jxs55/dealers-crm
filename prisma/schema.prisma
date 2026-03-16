@@ -27,7 +27,6 @@ model Dealer {
   name         String
   businessType String
   phone        String
-  whatsappPhone String? @map("whatsapp_phone")
   instagram    String?
   contactMethod String  @default("none") @map("contact_method")
   location     String
@@ -39,7 +38,6 @@ model Dealer {
   createdBy    User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
 
   @@unique([phone])
-  @@unique([whatsappPhone])
   @@unique([instagram])
 }
 

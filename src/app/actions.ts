@@ -47,12 +47,12 @@ function sanitizeInstagramHandle(value: string) {
   return cleaned
 }
 
-function resolveContactMethod(whatsappPhone: string, instagram: string) {
-  if (whatsappPhone && instagram) {
+function resolveContactMethod(phone: string, instagram: string) {
+  if (phone && instagram) {
     return "both" as const
   }
 
-  if (whatsappPhone) {
+  if (phone) {
     return "whatsapp" as const
   }
 
@@ -77,14 +77,12 @@ export async function createDealer(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim()
   const businessType = String(formData.get("businessType") ?? "").trim()
   const phoneRaw = String(formData.get("phone") ?? formData.get("contactPhone") ?? "").trim()
-  const whatsappPhoneRaw = String(formData.get("whatsappPhone") ?? "").trim()
   const instagramRaw = String(formData.get("instagram") ?? "").trim()
   const location = String(formData.get("location") ?? "").trim()
   const companyType = String(formData.get("companyType") ?? "").trim()
   const phone = sanitizePhone(phoneRaw)
-  const whatsappPhone = sanitizePhone(whatsappPhoneRaw)
   const instagram = sanitizeInstagramHandle(instagramRaw)
-  const contactMethod = resolveContactMethod(whatsappPhone, instagram)
+  const contactMethod = resolveContactMethod(phone, instagram)
 
   if (!name) {
     return { success: false, error: "Name is required." } satisfies ActionResult
@@ -101,20 +99,6 @@ export async function createDealer(formData: FormData) {
     } satisfies ActionResult
   }
 
-  if (whatsappPhoneRaw && !whatsappPhone) {
-    return {
-      success: false,
-      error: "WhatsApp phone is invalid.",
-    } satisfies ActionResult
-  }
-
-  if (whatsappPhoneRaw && !isValidDominicanPhone(whatsappPhoneRaw)) {
-    return {
-      success: false,
-      error: "WhatsApp phone must be a valid Dominican number.",
-    } satisfies ActionResult
-  }
-
   if (!businessType || !location || !companyType) {
     return { success: false, error: "All fields are required." } satisfies ActionResult
   }
@@ -123,7 +107,6 @@ export async function createDealer(formData: FormData) {
     where: {
       OR: [
         { phone },
-        ...(whatsappPhone ? [{ whatsappPhone }] : []),
         ...(instagram ? [{ instagram }] : []),
       ],
     },
@@ -143,7 +126,6 @@ export async function createDealer(formData: FormData) {
         name,
         businessType,
         phone,
-        whatsappPhone: whatsappPhone || null,
         instagram: instagram || null,
         contactMethod,
         location,
@@ -208,7 +190,6 @@ type UpdateDealerInput = {
   name: string
   businessType: string
   phone: string
-  whatsappPhone: string
   instagram: string
   location: string
   companyType: string
@@ -225,14 +206,12 @@ export async function updateDealer(input: UpdateDealerInput) {
   const name = input.name.trim()
   const businessType = input.businessType.trim()
   const phoneRaw = input.phone.trim()
-  const whatsappPhoneRaw = input.whatsappPhone.trim()
   const instagramRaw = input.instagram.trim()
   const location = input.location.trim()
   const companyType = input.companyType.trim()
   const phone = sanitizePhone(phoneRaw)
-  const whatsappPhone = sanitizePhone(whatsappPhoneRaw)
   const instagram = sanitizeInstagramHandle(instagramRaw)
-  const contactMethod = resolveContactMethod(whatsappPhone, instagram)
+  const contactMethod = resolveContactMethod(phone, instagram)
 
   if (!id) {
     return { success: false, error: "ID de prospecto inválido." } satisfies ActionResult
@@ -259,25 +238,10 @@ export async function updateDealer(input: UpdateDealerInput) {
     } satisfies ActionResult
   }
 
-  if (whatsappPhoneRaw && !whatsappPhone) {
-    return {
-      success: false,
-      error: "El WhatsApp no es válido.",
-    } satisfies ActionResult
-  }
-
-  if (whatsappPhoneRaw && !isValidDominicanPhone(whatsappPhoneRaw)) {
-    return {
-      success: false,
-      error: "El WhatsApp debe ser dominicano y válido.",
-    } satisfies ActionResult
-  }
-
   const duplicate = await prisma.dealer.findFirst({
     where: {
       OR: [
         { phone },
-        ...(whatsappPhone ? [{ whatsappPhone }] : []),
         ...(instagram ? [{ instagram }] : []),
       ],
       id: {
@@ -303,7 +267,6 @@ export async function updateDealer(input: UpdateDealerInput) {
       name,
       businessType,
       phone,
-      whatsappPhone: whatsappPhone || null,
       instagram: instagram || null,
       contactMethod,
       location,
@@ -423,7 +386,6 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
       name: row.name.trim(),
       businessType: row.businessType.trim(),
       phoneRaw: row.phone.trim(),
-      whatsappPhoneRaw: row.whatsappPhone.trim(),
       instagramRaw: row.instagram.trim(),
       location: row.location.trim(),
       companyType: row.companyType.trim(),
@@ -432,10 +394,6 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
 
     const phones = incoming
       .map((row) => sanitizePhone(row.phoneRaw))
-      .filter(Boolean)
-
-    const whatsappPhones = incoming
-      .map((row) => sanitizePhone(row.whatsappPhoneRaw))
       .filter(Boolean)
 
     const instagramHandles = incoming
@@ -448,11 +406,6 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
           {
             phone: {
               in: phones,
-            },
-          },
-          {
-            whatsappPhone: {
-              in: whatsappPhones,
             },
           },
           {
@@ -469,16 +422,12 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
       },
       select: {
         phone: true,
-        whatsappPhone: true,
         instagram: true,
         name: true,
       },
     })
 
     const existingPhones = new Set(existing.map((dealer) => dealer.phone))
-    const existingWhatsappPhones = new Set(
-      existing.map((dealer) => dealer.whatsappPhone).filter(Boolean)
-    )
     const existingInstagramHandles = new Set(
       existing.map((dealer) => dealer.instagram).filter(Boolean)
     )
@@ -487,13 +436,11 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
     )
 
     const seenPhones = new Set<string>()
-    const seenWhatsappPhones = new Set<string>()
     const seenInstagramHandles = new Set<string>()
     const seenNames = new Set<string>()
 
     const validRows = incoming.filter((row) => {
       const sanitizedPhone = sanitizePhone(row.phoneRaw)
-      const sanitizedWhatsappPhone = sanitizePhone(row.whatsappPhoneRaw)
       const sanitizedInstagram = sanitizeInstagramHandle(row.instagramRaw)
       const normalizedName = normalizeProspectName(row.name)
 
@@ -503,8 +450,7 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
         !row.location ||
         !row.companyType ||
         !sanitizedPhone ||
-        !isValidDominicanPhone(row.phoneRaw) ||
-        (row.whatsappPhoneRaw && !isValidDominicanPhone(row.whatsappPhoneRaw))
+        !isValidDominicanPhone(row.phoneRaw)
 
       if (isInvalid) {
         return false
@@ -512,9 +458,6 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
 
       const isDuplicate =
         existingPhones.has(sanitizedPhone) ||
-        (sanitizedWhatsappPhone &&
-          (existingWhatsappPhones.has(sanitizedWhatsappPhone) ||
-            seenWhatsappPhones.has(sanitizedWhatsappPhone))) ||
         (sanitizedInstagram &&
           (existingInstagramHandles.has(sanitizedInstagram) ||
             seenInstagramHandles.has(sanitizedInstagram))) ||
@@ -527,9 +470,6 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
       }
 
       seenPhones.add(sanitizedPhone)
-      if (sanitizedWhatsappPhone) {
-        seenWhatsappPhones.add(sanitizedWhatsappPhone)
-      }
       if (sanitizedInstagram) {
         seenInstagramHandles.add(sanitizedInstagram)
       }
@@ -547,10 +487,9 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
 
     const createResult = await tx.dealer.createMany({
       data: validRows.map((row) => {
-        const sanitizedWhatsappPhone = sanitizePhone(row.whatsappPhoneRaw)
         const sanitizedInstagram = sanitizeInstagramHandle(row.instagramRaw)
         const computedContactMethod = resolveContactMethod(
-          sanitizedWhatsappPhone,
+          sanitizePhone(row.phoneRaw),
           sanitizedInstagram
         )
 
@@ -558,7 +497,6 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
           name: row.name,
           businessType: row.businessType,
           phone: sanitizePhone(row.phoneRaw),
-          whatsappPhone: sanitizedWhatsappPhone || null,
           instagram: sanitizedInstagram || null,
           contactMethod:
             row.contactMethodRaw === "whatsapp" ||

@@ -25,10 +25,8 @@ import {
 export function ProspectForm() {
   const router = useRouter()
   const [phoneInput, setPhoneInput] = useState("")
-  const [whatsappInput, setWhatsappInput] = useState("")
   const [instagramInput, setInstagramInput] = useState("")
   const [phoneError, setPhoneError] = useState("")
-  const [whatsappError, setWhatsappError] = useState("")
   const [formError, setFormError] = useState("")
   const [isSubmitting, startSubmitting] = useTransition()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -51,12 +49,9 @@ export function ProspectForm() {
             startSubmitting(async () => {
               setFormError("")
               setPhoneError("")
-              setWhatsappError("")
 
               const phoneValue = String(formData.get("phone") ?? "")
-              const whatsappValue = String(formData.get("whatsappPhone") ?? "")
               const sanitizedPhone = sanitizePhone(phoneValue)
-              const sanitizedWhatsapp = sanitizePhone(whatsappValue)
 
               if (!sanitizedPhone) {
                 setPhoneError("El teléfono es obligatorio.")
@@ -73,16 +68,6 @@ export function ProspectForm() {
                 return
               }
 
-              if (whatsappValue.trim() && !sanitizedWhatsapp) {
-                setWhatsappError("El número de WhatsApp no es válido.")
-                return
-              }
-
-              if (whatsappValue.trim() && !isValidDominicanPhone(whatsappValue)) {
-                setWhatsappError("El WhatsApp debe ser dominicano y válido.")
-                return
-              }
-
               const result = await createDealer(formData)
 
               if (!result.success) {
@@ -91,7 +76,6 @@ export function ProspectForm() {
               }
 
               setPhoneInput("")
-              setWhatsappInput("")
               setInstagramInput("")
               setIsDialogOpen(false)
               router.refresh()
@@ -119,24 +103,6 @@ export function ProspectForm() {
               required
             />
             <FieldError>{phoneError}</FieldError>
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="whatsappPhone">WhatsApp</FieldLabel>
-            <Input
-              id="whatsappPhone"
-              name="whatsappPhone"
-              placeholder="+1 809 555 1234 (opcional)"
-              value={whatsappInput}
-              onChange={(event) => {
-                setWhatsappInput(formatPhoneDisplay(event.target.value))
-                if (whatsappError) {
-                  setWhatsappError("")
-                }
-              }}
-              inputMode="tel"
-            />
-            <FieldError>{whatsappError}</FieldError>
           </Field>
 
           <Input

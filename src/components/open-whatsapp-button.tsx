@@ -106,7 +106,7 @@ export function OpenWhatsAppButton({ prospect, templates }: OpenWhatsAppButtonPr
 
   function handleConfirmStatusAndOpen() {
     startSubmitting(async () => {
-      if (!prospect.whatsappPhone) {
+      if (!prospect.phone) {
         toast.error("Este prospecto no tiene WhatsApp configurado.")
         return
       }
@@ -125,7 +125,7 @@ export function OpenWhatsAppButton({ prospect, templates }: OpenWhatsAppButtonPr
         router.refresh()
       }
 
-      const url = getWhatsAppUrl(prospect.whatsappPhone, preparedMessage)
+      const url = getWhatsAppUrl(prospect.phone, preparedMessage)
       window.location.assign(url)
       closeAllDialogs()
     })

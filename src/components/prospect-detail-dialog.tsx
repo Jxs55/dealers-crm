@@ -38,7 +38,6 @@ type FormState = {
   name: string
   businessType: string
   phone: string
-  whatsappPhone: string
   instagram: string
   location: string
   companyType: string
@@ -49,7 +48,6 @@ const EMPTY_FORM: FormState = {
   name: "",
   businessType: "",
   phone: "",
-  whatsappPhone: "",
   instagram: "",
   location: "",
   companyType: "",
@@ -67,7 +65,6 @@ export function ProspectDetailDialog({
   const [isDeleting, startDeleting] = useTransition()
   const [formError, setFormError] = useState("")
   const [phoneError, setPhoneError] = useState("")
-  const [whatsappError, setWhatsappError] = useState("")
   const [formValues, setFormValues] = useState<FormState>(EMPTY_FORM)
 
   if (!prospect) {
@@ -84,14 +81,12 @@ export function ProspectDetailDialog({
       name: prospect.name,
       businessType: prospect.businessType,
       phone: formatPhoneDisplay(prospect.phone),
-      whatsappPhone: formatPhoneDisplay(prospect.whatsappPhone ?? ""),
       instagram: prospect.instagram ?? "",
       location: prospect.location,
       companyType: prospect.companyType,
     })
     setFormError("")
     setPhoneError("")
-    setWhatsappError("")
     setIsEditing(true)
   }
 
@@ -100,7 +95,6 @@ export function ProspectDetailDialog({
       setIsEditing(false)
       setFormError("")
       setPhoneError("")
-      setWhatsappError("")
       setFormValues(EMPTY_FORM)
     }
 
@@ -110,10 +104,8 @@ export function ProspectDetailDialog({
   function handleSave() {
     setFormError("")
     setPhoneError("")
-    setWhatsappError("")
 
     const sanitizedPhone = sanitizePhone(formValues.phone)
-    const sanitizedWhatsapp = sanitizePhone(formValues.whatsappPhone)
 
     if (!sanitizedPhone) {
       setPhoneError("El teléfono es obligatorio.")
@@ -122,16 +114,6 @@ export function ProspectDetailDialog({
 
     if (!isValidDominicanPhone(formValues.phone)) {
       setPhoneError("El teléfono debe ser dominicano y válido.")
-      return
-    }
-
-    if (formValues.whatsappPhone.trim() && !sanitizedWhatsapp) {
-      setWhatsappError("El número de WhatsApp no es válido.")
-      return
-    }
-
-    if (formValues.whatsappPhone.trim() && !isValidDominicanPhone(formValues.whatsappPhone)) {
-      setWhatsappError("El WhatsApp debe ser dominicano y válido.")
       return
     }
 
@@ -227,25 +209,6 @@ export function ProspectDetailDialog({
                 />
                 <FieldError>{phoneError}</FieldError>
               </Field>
-              <Field>
-                <FieldLabel htmlFor="prospectWhatsapp">WhatsApp</FieldLabel>
-                <Input
-                  id="prospectWhatsapp"
-                  value={formValues.whatsappPhone}
-                  onChange={(event) => {
-                    setFormValues((previous) => ({
-                      ...previous,
-                      whatsappPhone: formatPhoneDisplay(event.target.value),
-                    }))
-
-                    if (whatsappError) {
-                      setWhatsappError("")
-                    }
-                  }}
-                  placeholder="+1 809 555 1234 (opcional)"
-                />
-                <FieldError>{whatsappError}</FieldError>
-              </Field>
               <Input
                 value={formValues.instagram}
                 onChange={(event) =>
@@ -290,7 +253,7 @@ export function ProspectDetailDialog({
                 <span className="font-medium">Teléfono:</span> {prospect.phone}
               </p>
               <p>
-                <span className="font-medium">WhatsApp:</span> {prospect.whatsappPhone ?? "No definido"}
+                <span className="font-medium">WhatsApp:</span> {prospect.phone}
               </p>
               <p>
                 <span className="font-medium">Instagram:</span> {prospect.instagram ? `@${prospect.instagram}` : "No definido"}
@@ -338,7 +301,7 @@ export function ProspectDetailDialog({
                 <Button variant="outline" onClick={startEditing}>
                   Editar
                 </Button>
-                {prospect.whatsappPhone ? (
+                {prospect.phone ? (
                   <OpenWhatsAppButton prospect={prospect} templates={templates} />
                 ) : null}
                 {prospect.instagram ? (
