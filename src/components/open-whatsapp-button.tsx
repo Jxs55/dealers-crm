@@ -40,16 +40,9 @@ type OpenWhatsAppButtonProps = {
 
 type StatusChoice = "no-change" | "contacted" | "pending"
 
-function getWhatsAppUrl(phone: string, message: string) {
+function getWhatsAppUrl(phone: string) {
   const normalizedPhone = phone.replace(/\D/g, "")
-  const encodedMessage = encodeURIComponent(message)
-  return `https://web.whatsapp.com/send?phone=${normalizedPhone}&text=${encodedMessage}`
-}
-
-function getWhatsAppDesktopUrl(phone: string, message: string) {
-  const normalizedPhone = phone.replace(/\D/g, "")
-  const encodedMessage = encodeURIComponent(message)
-  return `whatsapp://send?phone=${normalizedPhone}&text=${encodedMessage}`
+  return `https://wa.me/${normalizedPhone}`
 }
 
 function openOrReuseWhatsAppTab(url: string) {
@@ -64,27 +57,9 @@ function openOrReuseWhatsAppTab(url: string) {
   whatsappTab.focus()
 }
 
-function openWhatsAppWithFallback(phone: string, message: string) {
-  const desktopUrl = getWhatsAppDesktopUrl(phone, message)
-  const webUrl = getWhatsAppUrl(phone, message)
-  let switchedContext = false
-
-  const onVisibilityChange = () => {
-    if (document.hidden) {
-      switchedContext = true
-    }
-  }
-
-  window.addEventListener("visibilitychange", onVisibilityChange)
-  window.location.href = desktopUrl
-
-  window.setTimeout(() => {
-    window.removeEventListener("visibilitychange", onVisibilityChange)
-
-    if (!switchedContext) {
-      openOrReuseWhatsAppTab(webUrl)
-    }
-  }, 900)
+function openWhatsAppWithFallback(phone: string) {
+  const webUrl = getWhatsAppUrl(phone)
+  openOrReuseWhatsAppTab(webUrl)
 }
 
 export function OpenWhatsAppButton({ prospect, templates }: OpenWhatsAppButtonProps) {
@@ -166,7 +141,7 @@ export function OpenWhatsAppButton({ prospect, templates }: OpenWhatsAppButtonPr
         router.refresh()
       }
 
-      openWhatsAppWithFallback(prospect.phone, preparedMessage)
+      openWhatsAppWithFallback(prospect.phone)
       closeAllDialogs()
     })
   }

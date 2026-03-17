@@ -33,7 +33,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { renderMessageTemplate } from "@/lib/message-template"
 import type { MessageTemplate } from "@/types/message-template"
 import type { Prospect } from "@/types/prospect"
 import { Instagram, MessageCircle, Trash2 } from "lucide-react"
@@ -53,12 +52,8 @@ type ProspectsTableProps = {
   templates: MessageTemplate[]
 }
 
-function getWhatsAppUrl(phone: string, message: string) {
-  return `https://web.whatsapp.com/send?phone=${phone.replace(/\D/g, "")}&text=${encodeURIComponent(message)}`
-}
-
-function getWhatsAppDesktopUrl(phone: string, message: string) {
-  return `whatsapp://send?phone=${phone.replace(/\D/g, "")}&text=${encodeURIComponent(message)}`
+function getWhatsAppUrl(phone: string) {
+  return `https://wa.me/${phone.replace(/\D/g, "")}`
 }
 
 function openOrReuseWhatsAppTab(url: string) {
@@ -73,27 +68,9 @@ function openOrReuseWhatsAppTab(url: string) {
   whatsappTab.focus()
 }
 
-function openWhatsAppWithFallback(phone: string, message: string) {
-  const desktopUrl = getWhatsAppDesktopUrl(phone, message)
-  const webUrl = getWhatsAppUrl(phone, message)
-  let switchedContext = false
-
-  const onVisibilityChange = () => {
-    if (document.hidden) {
-      switchedContext = true
-    }
-  }
-
-  window.addEventListener("visibilitychange", onVisibilityChange)
-  window.location.href = desktopUrl
-
-  window.setTimeout(() => {
-    window.removeEventListener("visibilitychange", onVisibilityChange)
-
-    if (!switchedContext) {
-      openOrReuseWhatsAppTab(webUrl)
-    }
-  }, 900)
+function openWhatsAppWithFallback(phone: string) {
+  const webUrl = getWhatsAppUrl(phone)
+  openOrReuseWhatsAppTab(webUrl)
 }
 
 function getInstagramUrl(handle: string) {
@@ -110,15 +87,6 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isDeleting, startDeleting] = useTransition()
-
-  const defaultMessage = useMemo(() => {
-    if (templates.length === 0) {
-      return "Hola"
-    }
-
-    const firstTemplate = templates[0]
-    return firstTemplate.messageTemplate
-  }, [templates])
 
   const filteredProspects = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
@@ -387,16 +355,10 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                                   asChild
                                 >
                                   <a
-                                    href={getWhatsAppUrl(
-                                      prospect.phone,
-                                      renderMessageTemplate(defaultMessage, prospect)
-                                    )}
+                                    href={getWhatsAppUrl(prospect.phone)}
                                     onClick={(event) => {
                                       event.preventDefault()
-                                      openWhatsAppWithFallback(
-                                        prospect.phone,
-                                        renderMessageTemplate(defaultMessage, prospect)
-                                      )
+                                      openWhatsAppWithFallback(prospect.phone)
                                     }}
                                     target="crm-whatsapp-tab"
                                   >
