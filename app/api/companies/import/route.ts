@@ -15,6 +15,13 @@ type CompanyImportPayload = {
   status?: string
 }
 
+type ImportSkipReason =
+  | "missing_required_fields"
+  | "invalid_phone"
+  | "duplicate_phone"
+  | "duplicate_instagram"
+  | "duplicate_name"
+
 function normalizeName(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ")
 }
@@ -44,6 +51,13 @@ function resolveContactMethod(phone: string, instagram: string) {
   }
 
   return "none" as const
+}
+
+function addSkipReason(
+  target: Partial<Record<ImportSkipReason, number>>,
+  reason: ImportSkipReason
+) {
+  target[reason] = (target[reason] ?? 0) + 1
 }
 
 export async function POST(request: Request) {
@@ -125,27 +139,39 @@ export async function POST(request: Request) {
   const seenPhones = new Set<string>()
   const seenInstagrams = new Set<string>()
   const seenNames = new Set<string>()
+  const skippedByReason: Partial<Record<ImportSkipReason, number>> = {}
 
   const insertable = preparedRows.filter((row) => {
     if (!row.name || !row.phone) {
+      addSkipReason(skippedByReason, "missing_required_fields")
       return false
     }
 
     if (!isValidDominicanPhone(row.phoneRaw)) {
+      addSkipReason(skippedByReason, "invalid_phone")
       return false
     }
 
     const normalizedName = normalizeName(row.name)
 
-    const isDuplicate =
-      existingPhones.has(row.phone) ||
-      (row.instagram &&
-        (existingInstagrams.has(row.instagram) || seenInstagrams.has(row.instagram))) ||
-      existingNames.has(normalizedName) ||
-      seenPhones.has(row.phone) ||
-      seenNames.has(normalizedName)
+    const isDuplicatePhone = existingPhones.has(row.phone) || seenPhones.has(row.phone)
+    if (isDuplicatePhone) {
+      addSkipReason(skippedByReason, "duplicate_phone")
+      return false
+    }
 
-    if (isDuplicate) {
+    const isDuplicateInstagram =
+      Boolean(row.instagram) &&
+      (existingInstagrams.has(row.instagram) || seenInstagrams.has(row.instagram))
+    if (isDuplicateInstagram) {
+      addSkipReason(skippedByReason, "duplicate_instagram")
+      return false
+    }
+
+    const isDuplicateName =
+      existingNames.has(normalizedName) || seenNames.has(normalizedName)
+    if (isDuplicateName) {
+      addSkipReason(skippedByReason, "duplicate_name")
       return false
     }
 
@@ -159,7 +185,11 @@ export async function POST(request: Request) {
   })
 
   if (insertable.length === 0) {
-    return NextResponse.json({ inserted: 0, skipped: payload.length })
+    return NextResponse.json({
+      inserted: 0,
+      skipped: payload.length,
+      skippedByReason,
+    })
   }
 
   const result = await prisma.$transaction(async (tx) => {
@@ -190,5 +220,6 @@ export async function POST(request: Request) {
   return NextResponse.json({
     inserted: result.count,
     skipped: payload.length - result.count,
+    skippedByReason,
   })
 }

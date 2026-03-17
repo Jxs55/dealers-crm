@@ -23,9 +23,6 @@ export default async function PosiblesClientesPage() {
 
   const [prospects, templates] = await Promise.all([
     prisma.dealer.findMany({
-      where: {
-        
-      },
       orderBy: { createdAt: "desc" },
     }),
     prisma.messageTemplate.findMany({
@@ -45,6 +42,7 @@ export default async function PosiblesClientesPage() {
   const normalizedProspects = prospects.map((prospect) => ({
     ...prospect,
     contactMethod: normalizeContactMethod(prospect.contactMethod),
+    isActive: prospect.isActive ?? true,
   }))
 
   return <ProspectsTable prospects={normalizedProspects} templates={templates} />

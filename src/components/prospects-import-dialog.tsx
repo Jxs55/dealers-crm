@@ -60,6 +60,42 @@ type CompaniesImportPayload = {
   status: string
 }
 
+type ImportSkipReason =
+  | "missing_required_fields"
+  | "invalid_phone"
+  | "duplicate_phone"
+  | "duplicate_instagram"
+  | "duplicate_name"
+
+type ImportApiSuccess = {
+  inserted: number
+  skipped: number
+  skippedByReason?: Partial<Record<ImportSkipReason, number>>
+}
+
+const SKIP_REASON_LABELS: Record<ImportSkipReason, string> = {
+  missing_required_fields: "faltan campos obligatorios",
+  invalid_phone: "teléfono inválido",
+  duplicate_phone: "número ya existente",
+  duplicate_instagram: "Instagram ya existente",
+  duplicate_name: "nombre ya existente",
+}
+
+function buildSkipReasonsMessage(skippedByReason?: Partial<Record<ImportSkipReason, number>>) {
+  if (!skippedByReason) {
+    return ""
+  }
+
+  const parts = Object.entries(skippedByReason)
+    .filter(([, count]) => Boolean(count))
+    .map(([reason, count]) => {
+      const label = SKIP_REASON_LABELS[reason as ImportSkipReason]
+      return `${count} por ${label}`
+    })
+
+  return parts.length > 0 ? parts.join(" · ") : ""
+}
+
 const DATABASE_FIELDS: Array<{ value: DbField; label: string; required?: boolean }> = [
   { value: "name", label: "nombre", required: true },
   { value: "business_type", label: "tipo_negocio" },
@@ -266,9 +302,7 @@ export function ProspectsImportDialog() {
         body: JSON.stringify(payload),
       })
 
-      const data = (await response.json()) as
-        | { inserted: number; skipped: number }
-        | { error: string }
+      const data = (await response.json()) as ImportApiSuccess | { error: string }
 
       if (!response.ok) {
         const message = "error" in data ? data.error : "No se pudo importar."
@@ -279,8 +313,17 @@ export function ProspectsImportDialog() {
 
       const inserted = "inserted" in data ? data.inserted : 0
       const skipped = "skipped" in data ? data.skipped : 0
+      const skipReasons = "skippedByReason" in data
+        ? buildSkipReasonsMessage(data.skippedByReason)
+        : ""
 
-      toast.success(`Importación completada. Insertados: ${inserted}, omitidos: ${skipped}.`)
+      const summary = `Importación completada. Insertados: ${inserted}, omitidos: ${skipped}.`
+
+      if (skipped > 0 && skipReasons) {
+        toast.warning(`${summary} Motivos: ${skipReasons}.`)
+      } else {
+        toast.success(summary)
+      }
       setStep(3)
     })
   }

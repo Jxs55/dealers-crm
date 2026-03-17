@@ -40,6 +40,7 @@ import { toast } from "sonner"
 import { AutoRefresh } from "./auto-refresh"
 
 type StatusFilterMode = "all" | "contacted" | "not-contacted"
+type ActivityFilterMode = "active" | "inactive" | "all"
 type ContactFilterMode =
   | "all"
   | "has-whatsapp"
@@ -79,6 +80,7 @@ function getInstagramUrl(handle: string) {
 
 export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
   const router = useRouter()
+  const [activityFilterMode, setActivityFilterMode] = useState<ActivityFilterMode>("active")
   const [statusFilterMode, setStatusFilterMode] = useState<StatusFilterMode>("all")
   const [contactFilterMode, setContactFilterMode] = useState<ContactFilterMode>("all")
   const [search, setSearch] = useState("")
@@ -95,6 +97,11 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
       const hasWhatsapp = Boolean(prospect.phone)
       const hasInstagram = Boolean(prospect.instagram)
 
+      const matchesActivityFilter =
+        activityFilterMode === "all" ||
+        (activityFilterMode === "active" && prospect.isActive) ||
+        (activityFilterMode === "inactive" && !prospect.isActive)
+
       const matchesStatusFilter =
         statusFilterMode === "all" ||
         (statusFilterMode === "contacted" && prospect.contacted) ||
@@ -110,9 +117,11 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
       const matchesSearch =
         normalizedSearch.length === 0 || prospect.name.toLowerCase().includes(normalizedSearch)
 
-      return matchesStatusFilter && matchesContactFilter && matchesSearch
+      return (
+        matchesActivityFilter && matchesStatusFilter && matchesContactFilter && matchesSearch
+      )
     })
-  }, [contactFilterMode, prospects, search, statusFilterMode])
+  }, [activityFilterMode, contactFilterMode, prospects, search, statusFilterMode])
 
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredProspects.length) {
@@ -140,7 +149,7 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
     }
 
     const shouldDelete = window.confirm(
-      `¿Estás seguro de eliminar ${selectedIds.size} prospecto(s)?`
+      `¿Estás seguro de descartar ${selectedIds.size} prospecto(s)? Pasarán a inactivos.`
     )
 
     if (!shouldDelete) {
@@ -155,7 +164,7 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
         return
       }
 
-      toast.success(`${selectedIds.size} prospecto(s) eliminado(s)`)
+      toast.success(`${selectedIds.size} prospecto(s) marcado(s) como inactivos`)
       setSelectedIds(new Set())
       router.refresh()
     })
@@ -191,7 +200,7 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
               disabled={isDeleting}
             >
               <Trash2 className="mr-1 h-4 w-4" />
-              Eliminar
+              Descartar
             </Button>
             <ProspectsExportDialog prospects={selectedProspectsData} />
             <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
@@ -229,7 +238,21 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
           </Button>
         </div>
 
-        <div className="grid w-full gap-3 md:w-auto md:grid-cols-[220px_240px]">
+        <div className="grid w-full gap-3 md:w-auto md:grid-cols-[220px_220px_240px]">
+          <Select
+            value={activityFilterMode}
+            onValueChange={(value) => setActivityFilterMode(value as ActivityFilterMode)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Vista" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Vista: Activos</SelectItem>
+              <SelectItem value="inactive">Vista: Inactivos</SelectItem>
+              <SelectItem value="all">Vista: Todos</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Select
             value={contactFilterMode}
             onValueChange={(value) => setContactFilterMode(value as ContactFilterMode)}
@@ -291,11 +314,12 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                 filteredProspects.map((prospect) => {
                   const hasWhatsapp = Boolean(prospect.phone)
                   const hasInstagram = Boolean(prospect.instagram)
+                  const isInactive = !prospect.isActive
 
                   return (
                     <TableRow
                       key={prospect.id}
-                      className={`cursor-pointer ${selectedIds.has(prospect.id) ? "bg-muted/50" : ""}`}
+                      className={`cursor-pointer ${selectedIds.has(prospect.id) ? "bg-muted/50" : ""} ${isInactive ? "opacity-70" : ""}`}
                       onDoubleClick={() => {
                         setSelectedProspect(prospect)
                         setIsDetailOpen(true)
@@ -319,7 +343,7 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                         <div className="flex items-center gap-2">
                           <Checkbox
                             checked={prospect.contacted}
-                            disabled={isUpdating}
+                            disabled={isUpdating || isInactive}
                             onCheckedChange={(checked) => {
                               startUpdating(async () => {
                                 const result = await updateDealerContacted(
@@ -334,7 +358,9 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                             }}
                             aria-label={`Marcar ${prospect.name} como contactado`}
                           />
-                          {prospect.contacted ? (
+                          {isInactive ? (
+                            <Badge variant="secondary">Inactivo</Badge>
+                          ) : prospect.contacted ? (
                             <Badge className="border-transparent bg-chart-2/20 text-chart-2">
                               Contactado
                             </Badge>
@@ -345,7 +371,7 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                       </TableCell>
                       <TableCell onClick={(event) => event.stopPropagation()}>
                         <div className="flex items-center gap-2">
-                          {hasWhatsapp ? (
+                          {hasWhatsapp && !isInactive ? (
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button
@@ -371,7 +397,7 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                             </Tooltip>
                           ) : null}
 
-                          {hasInstagram ? (
+                          {hasInstagram && !isInactive ? (
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button
@@ -394,7 +420,9 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                             </Tooltip>
                           ) : null}
 
-                          {!hasWhatsapp && !hasInstagram ? (
+                          {isInactive ? (
+                            <Badge variant="secondary">Sin acciones (inactivo)</Badge>
+                          ) : (!hasWhatsapp && !hasInstagram) ? (
                             <Badge variant="secondary">No contact method</Badge>
                           ) : null}
                         </div>

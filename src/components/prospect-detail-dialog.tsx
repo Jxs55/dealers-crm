@@ -137,7 +137,9 @@ export function ProspectDetailDialog({
     }
 
     const prospectId = prospect.id
-    const shouldDelete = window.confirm("¿Deseas eliminar este prospecto?")
+    const shouldDelete = window.confirm(
+      "¿Deseas descartar este prospecto? Pasará a estado inactivo."
+    )
 
     if (!shouldDelete) {
       return
@@ -151,7 +153,7 @@ export function ProspectDetailDialog({
         return
       }
 
-      toast.success("Prospecto eliminado.")
+      toast.success("Prospecto marcado como inactivo.")
       onOpenChange(false)
       router.refresh()
     })
@@ -266,7 +268,9 @@ export function ProspectDetailDialog({
               </p>
               <p className="flex items-center gap-2">
                 <span className="font-medium">Estado:</span>
-                {prospect.contacted ? (
+                {!prospect.isActive ? (
+                  <Badge variant="secondary">Inactivo</Badge>
+                ) : prospect.contacted ? (
                   <Badge className="border-transparent bg-chart-2/20 text-chart-2">
                     Contactado
                   </Badge>
@@ -279,8 +283,12 @@ export function ProspectDetailDialog({
         </div>
 
         <DialogFooter className="gap-2 sm:justify-between">
-          <Button variant="destructive" onClick={handleDelete} disabled={isDeleting || isSaving}>
-            {isDeleting ? "Eliminando..." : "Eliminar"}
+          <Button
+            variant="destructive"
+            onClick={handleDelete}
+            disabled={isDeleting || isSaving || !prospect.isActive}
+          >
+            {isDeleting ? "Descartando..." : "Descartar"}
           </Button>
           <div className="flex flex-wrap justify-end gap-2">
             {isEditing ? (
@@ -298,13 +306,13 @@ export function ProspectDetailDialog({
               </>
             ) : (
               <>
-                <Button variant="outline" onClick={startEditing}>
+                <Button variant="outline" onClick={startEditing} disabled={!prospect.isActive}>
                   Editar
                 </Button>
-                {prospect.phone ? (
+                {prospect.phone && prospect.isActive ? (
                   <OpenWhatsAppButton prospect={prospect} templates={templates} />
                 ) : null}
-                {prospect.instagram ? (
+                {prospect.instagram && prospect.isActive ? (
                   <Button variant="outline" asChild>
                     <a
                       href={`https://instagram.com/${prospect.instagram}`}

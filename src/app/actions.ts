@@ -17,7 +17,15 @@ type ActionResult = {
 type ImportResult = ActionResult & {
   insertedCount?: number
   skippedCount?: number
+  skippedByReason?: Partial<Record<ImportSkipReason, number>>
 }
+
+type ImportSkipReason =
+  | "missing_required_fields"
+  | "invalid_phone"
+  | "duplicate_phone"
+  | "duplicate_instagram"
+  | "duplicate_name"
 
 type MessageTemplateActionResult = ActionResult & {
   templateId?: string
@@ -65,6 +73,13 @@ function resolveContactMethod(phone: string, instagram: string) {
 
 function normalizeProspectName(name: string) {
   return name.trim().toLowerCase().replace(/\s+/g, " ")
+}
+
+function addSkipReason(
+  target: Partial<Record<ImportSkipReason, number>>,
+  reason: ImportSkipReason
+) {
+  target[reason] = (target[reason] ?? 0) + 1
 }
 
 export async function createDealer(formData: FormData) {
@@ -170,7 +185,7 @@ export async function updateDealerContacted(id: string, contacted: boolean) {
   const result = await prisma.dealer.updateMany({
     where: {
       id,
-      
+      isActive: true,
     },
     data: { contacted },
   })
@@ -261,7 +276,7 @@ export async function updateDealer(input: UpdateDealerInput) {
   const result = await prisma.dealer.updateMany({
     where: {
       id,
-      
+      isActive: true,
     },
     data: {
       name,
@@ -295,10 +310,13 @@ export async function deleteDealer(id: string) {
     return { success: false, error: "ID de prospecto inválido." } satisfies ActionResult
   }
 
-  const result = await prisma.dealer.deleteMany({
+  const result = await prisma.dealer.updateMany({
     where: {
       id,
-      
+      isActive: true,
+    },
+    data: {
+      isActive: false,
     },
   })
 
@@ -382,6 +400,8 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
   }
 
   const result = await prisma.$transaction(async (tx) => {
+    const skippedByReason: Partial<Record<ImportSkipReason, number>> = {}
+
     const incoming = rows.map((row) => ({
       name: row.name.trim(),
       businessType: row.businessType.trim(),
@@ -444,28 +464,42 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
       const sanitizedInstagram = sanitizeInstagramHandle(row.instagramRaw)
       const normalizedName = normalizeProspectName(row.name)
 
-      const isInvalid =
+      if (
         !row.name ||
         !row.businessType ||
         !row.location ||
         !row.companyType ||
-        !sanitizedPhone ||
-        !isValidDominicanPhone(row.phoneRaw)
-
-      if (isInvalid) {
+        !sanitizedPhone
+      ) {
+        addSkipReason(skippedByReason, "missing_required_fields")
         return false
       }
 
-      const isDuplicate =
-        existingPhones.has(sanitizedPhone) ||
-        (sanitizedInstagram &&
-          (existingInstagramHandles.has(sanitizedInstagram) ||
-            seenInstagramHandles.has(sanitizedInstagram))) ||
-        existingNames.has(normalizedName) ||
-        seenPhones.has(sanitizedPhone) ||
-        seenNames.has(normalizedName)
+      if (!isValidDominicanPhone(row.phoneRaw)) {
+        addSkipReason(skippedByReason, "invalid_phone")
+        return false
+      }
 
-      if (isDuplicate) {
+      const isDuplicatePhone =
+        existingPhones.has(sanitizedPhone) || seenPhones.has(sanitizedPhone)
+      if (isDuplicatePhone) {
+        addSkipReason(skippedByReason, "duplicate_phone")
+        return false
+      }
+
+      const isDuplicateInstagram =
+        Boolean(sanitizedInstagram) &&
+        (existingInstagramHandles.has(sanitizedInstagram) ||
+          seenInstagramHandles.has(sanitizedInstagram))
+      if (isDuplicateInstagram) {
+        addSkipReason(skippedByReason, "duplicate_instagram")
+        return false
+      }
+
+      const isDuplicateName =
+        existingNames.has(normalizedName) || seenNames.has(normalizedName)
+      if (isDuplicateName) {
+        addSkipReason(skippedByReason, "duplicate_name")
         return false
       }
 
@@ -482,6 +516,7 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
       return {
         insertedCount: 0,
         skippedCount: rows.length,
+        skippedByReason,
       }
     }
 
@@ -516,6 +551,7 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
     return {
       insertedCount: createResult.count,
       skippedCount: rows.length - createResult.count,
+      skippedByReason,
     }
   })
 
@@ -526,6 +562,7 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
     success: true,
     insertedCount: result.insertedCount,
     skippedCount: result.skippedCount,
+    skippedByReason: result.skippedByReason,
   } satisfies ImportResult
 }
 
@@ -696,7 +733,7 @@ export async function updateDealerStatusForWhatsApp(input: WhatsAppStatusInput) 
   const result = await prisma.dealer.updateMany({
     where: {
       id: input.dealerId,
-      
+      isActive: true,
     },
     data: {
       contacted,
@@ -721,10 +758,14 @@ export async function deleteMultipleDealers(ids: string[]): Promise<ActionResult
   }
 
   try {
-    await prisma.dealer.deleteMany({
+    await prisma.dealer.updateMany({
       where: {
-        id: { in: ids }
-      }
+        id: { in: ids },
+        isActive: true,
+      },
+      data: {
+        isActive: false,
+      },
     })
     
     revalidatePath("/(dashboard)/posibles-clientes", "page")
