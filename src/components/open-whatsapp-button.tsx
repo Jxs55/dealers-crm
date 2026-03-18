@@ -40,9 +40,14 @@ type OpenWhatsAppButtonProps = {
 
 type StatusChoice = "no-change" | "contacted" | "pending"
 
-function getWhatsAppUrl(phone: string) {
+function getWhatsAppUrl(phone: string, message?: string) {
   const normalizedPhone = phone.replace(/\D/g, "")
-  return `https://wa.me/${normalizedPhone}`
+
+  if (!message?.trim()) {
+    return `https://wa.me/${normalizedPhone}`
+  }
+
+  return `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`
 }
 
 function openOrReuseWhatsAppTab(url: string) {
@@ -57,8 +62,8 @@ function openOrReuseWhatsAppTab(url: string) {
   whatsappTab.focus()
 }
 
-function openWhatsAppWithFallback(phone: string) {
-  const webUrl = getWhatsAppUrl(phone)
+function openWhatsAppWithFallback(phone: string, message?: string) {
+  const webUrl = getWhatsAppUrl(phone, message)
   openOrReuseWhatsAppTab(webUrl)
 }
 
@@ -141,7 +146,7 @@ export function OpenWhatsAppButton({ prospect, templates }: OpenWhatsAppButtonPr
         router.refresh()
       }
 
-      openWhatsAppWithFallback(prospect.phone)
+      openWhatsAppWithFallback(prospect.phone, preparedMessage)
       closeAllDialogs()
     })
   }

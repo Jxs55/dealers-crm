@@ -142,19 +142,20 @@ export async function POST(request: Request) {
   const skippedByReason: Partial<Record<ImportSkipReason, number>> = {}
 
   const insertable = preparedRows.filter((row) => {
-    if (!row.name || !row.phone) {
+    if (!row.name || (!row.phone && !row.instagram)) {
       addSkipReason(skippedByReason, "missing_required_fields")
       return false
     }
 
-    if (!isValidDominicanPhone(row.phoneRaw)) {
+    if (row.phone && !isValidDominicanPhone(row.phoneRaw)) {
       addSkipReason(skippedByReason, "invalid_phone")
       return false
     }
 
     const normalizedName = normalizeName(row.name)
 
-    const isDuplicatePhone = existingPhones.has(row.phone) || seenPhones.has(row.phone)
+    const isDuplicatePhone =
+      Boolean(row.phone) && (existingPhones.has(row.phone) || seenPhones.has(row.phone))
     if (isDuplicatePhone) {
       addSkipReason(skippedByReason, "duplicate_phone")
       return false
@@ -175,7 +176,9 @@ export async function POST(request: Request) {
       return false
     }
 
-    seenPhones.add(row.phone)
+    if (row.phone) {
+      seenPhones.add(row.phone)
+    }
     if (row.instagram) {
       seenInstagrams.add(row.instagram)
     }
@@ -197,7 +200,7 @@ export async function POST(request: Request) {
       data: insertable.map((row) => ({
         name: row.name,
         businessType: row.businessType || "Sin categoría",
-        phone: row.phone,
+        phone: row.phone || null,
         instagram: row.instagram || null,
         contactMethod:
           row.contactMethodRaw === "whatsapp" ||

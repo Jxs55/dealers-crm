@@ -99,7 +99,7 @@ function buildSkipReasonsMessage(skippedByReason?: Partial<Record<ImportSkipReas
 const DATABASE_FIELDS: Array<{ value: DbField; label: string; required?: boolean }> = [
   { value: "name", label: "nombre", required: true },
   { value: "business_type", label: "tipo_negocio" },
-  { value: "phone", label: "telefono", required: true },
+  { value: "phone", label: "telefono" },
   { value: "instagram", label: "instagram" },
   { value: "contact_method", label: "metodo_contacto" },
   { value: "location", label: "ubicacion" },
@@ -107,7 +107,7 @@ const DATABASE_FIELDS: Array<{ value: DbField; label: string; required?: boolean
   { value: "status", label: "estado" },
 ]
 
-const REQUIRED_FIELDS: DbField[] = ["name", "phone"]
+const REQUIRED_FIELDS: DbField[] = ["name"]
 
 const FIELD_SUGGESTIONS: Record<DbField, string[]> = {
   name: ["name", "nombre", "empresa", "company", "nombre de la empresa"],

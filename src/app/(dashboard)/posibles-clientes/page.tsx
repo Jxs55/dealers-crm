@@ -41,6 +41,7 @@ export default async function PosiblesClientesPage() {
 
   const normalizedProspects = prospects.map((prospect) => ({
     ...prospect,
+    phone: prospect.phone ?? "",
     contactMethod: normalizeContactMethod(prospect.contactMethod),
     isActive: prospect.isActive ?? true,
   }))

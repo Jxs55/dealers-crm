@@ -469,19 +469,20 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
         !row.businessType ||
         !row.location ||
         !row.companyType ||
-        !sanitizedPhone
+        (!sanitizedPhone && !sanitizedInstagram)
       ) {
         addSkipReason(skippedByReason, "missing_required_fields")
         return false
       }
 
-      if (!isValidDominicanPhone(row.phoneRaw)) {
+      if (sanitizedPhone && !isValidDominicanPhone(row.phoneRaw)) {
         addSkipReason(skippedByReason, "invalid_phone")
         return false
       }
 
       const isDuplicatePhone =
-        existingPhones.has(sanitizedPhone) || seenPhones.has(sanitizedPhone)
+        Boolean(sanitizedPhone) &&
+        (existingPhones.has(sanitizedPhone) || seenPhones.has(sanitizedPhone))
       if (isDuplicatePhone) {
         addSkipReason(skippedByReason, "duplicate_phone")
         return false
@@ -503,7 +504,9 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
         return false
       }
 
-      seenPhones.add(sanitizedPhone)
+      if (sanitizedPhone) {
+        seenPhones.add(sanitizedPhone)
+      }
       if (sanitizedInstagram) {
         seenInstagramHandles.add(sanitizedInstagram)
       }
@@ -531,7 +534,7 @@ export async function importProspectsBatch(rows: ProspectImportRow[]) {
         return {
           name: row.name,
           businessType: row.businessType,
-          phone: sanitizePhone(row.phoneRaw),
+          phone: sanitizePhone(row.phoneRaw) || null,
           instagram: sanitizedInstagram || null,
           contactMethod:
             row.contactMethodRaw === "whatsapp" ||

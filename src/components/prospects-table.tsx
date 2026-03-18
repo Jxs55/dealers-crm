@@ -10,6 +10,7 @@ import { ProspectsExportDialog } from "@/components/prospects-export-dialog"
 import { ProspectsImportDialog } from "@/components/prospects-import-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import {
@@ -179,19 +180,19 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
   )
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 md:p-6">
+    <div className="mx-auto flex min-w-0 w-full max-w-7xl flex-col gap-4 overflow-x-hidden p-3 sm:gap-6 sm:p-4 md:p-6">
       <AutoRefresh interval={5000} />
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Posibles Clientes</h1>
-          <p className="text-base text-muted-foreground">
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Posibles Clientes</h1>
+          <p className="text-sm text-muted-foreground sm:text-base">
             Gestiona prospectos que podrían contratar tu ERP.
           </p>
         </div>
 
         {selectedIds.size > 0 ? (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/50 p-2">
+          <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border bg-muted/50 p-2 md:w-auto md:justify-end">
             <span className="px-2 text-sm font-medium">{selectedIds.size} seleccionados</span>
             <Button
               variant="destructive"
@@ -208,7 +209,7 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
             </Button>
           </div>
         ) : (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:justify-end md:w-auto md:justify-end">
             <ProspectsImportDialog />
             <ProspectsExportDialog prospects={filteredProspects} />
             <ProspectForm />
@@ -217,20 +218,23 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex w-full items-center gap-2 overflow-x-auto pb-1 md:w-auto md:overflow-visible md:pb-0">
           <Button
+            className="shrink-0"
             variant={statusFilterButtonStyle("all")}
             onClick={() => setStatusFilterMode("all")}
           >
             Todos
           </Button>
           <Button
+            className="shrink-0"
             variant={statusFilterButtonStyle("contacted")}
             onClick={() => setStatusFilterMode("contacted")}
           >
             Contactados
           </Button>
           <Button
+            className="shrink-0"
             variant={statusFilterButtonStyle("not-contacted")}
             onClick={() => setStatusFilterMode("not-contacted")}
           >
@@ -238,12 +242,12 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
           </Button>
         </div>
 
-        <div className="grid w-full gap-3 md:w-auto md:grid-cols-[220px_220px_240px]">
+        <div className="grid w-full gap-2 sm:gap-3 lg:grid-cols-[220px_220px_minmax(220px,1fr)] lg:items-center">
           <Select
             value={activityFilterMode}
             onValueChange={(value) => setActivityFilterMode(value as ActivityFilterMode)}
           >
-            <SelectTrigger>
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="Vista" />
             </SelectTrigger>
             <SelectContent>
@@ -257,7 +261,7 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
             value={contactFilterMode}
             onValueChange={(value) => setContactFilterMode(value as ContactFilterMode)}
           >
-            <SelectTrigger>
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="Filter by" />
             </SelectTrigger>
             <SelectContent>
@@ -270,6 +274,7 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
           </Select>
 
           <Input
+            className="w-full"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Buscar por nombre"
@@ -277,9 +282,123 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
+      <div className="grid gap-3 md:hidden">
+        {filteredProspects.length === 0 ? (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              No hay prospectos que coincidan con los filtros.
+            </CardContent>
+          </Card>
+        ) : (
+          filteredProspects.map((prospect) => {
+            const hasWhatsapp = Boolean(prospect.phone)
+            const hasInstagram = Boolean(prospect.instagram)
+            const isInactive = !prospect.isActive
+
+            return (
+              <Card key={prospect.id} className={selectedIds.has(prospect.id) ? "border-primary" : undefined}>
+                <CardContent className="grid gap-3 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium leading-tight">{prospect.name}</p>
+                      <p className="text-sm text-muted-foreground">{prospect.businessType}</p>
+                    </div>
+
+                    <Checkbox
+                      checked={selectedIds.has(prospect.id)}
+                      onCheckedChange={() => toggleSelect(prospect.id)}
+                      aria-label={`Seleccionar ${prospect.name}`}
+                    />
+                  </div>
+
+                  <div className="grid gap-1 text-sm">
+                    <p><span className="text-muted-foreground">WhatsApp:</span> {prospect.phone || "-"}</p>
+                    <p><span className="text-muted-foreground">Instagram:</span> {prospect.instagram ? `@${prospect.instagram}` : "-"}</p>
+                    <p><span className="text-muted-foreground">Ubicación:</span> {prospect.location || "-"}</p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={prospect.contacted}
+                      disabled={isUpdating || isInactive}
+                      onCheckedChange={(checked) => {
+                        startUpdating(async () => {
+                          const result = await updateDealerContacted(
+                            prospect.id,
+                            checked === true
+                          )
+
+                          if (result.success) {
+                            router.refresh()
+                          }
+                        })
+                      }}
+                      aria-label={`Marcar ${prospect.name} como contactado`}
+                    />
+
+                    {isInactive ? (
+                      <Badge variant="secondary">Inactivo</Badge>
+                    ) : prospect.contacted ? (
+                      <Badge className="border-transparent bg-chart-2/20 text-chart-2">
+                        Contactado
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary">Pendiente</Badge>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {hasWhatsapp && !isInactive ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openWhatsAppWithFallback(prospect.phone)}
+                      >
+                        <MessageCircle className="mr-1 h-4 w-4 text-chart-2" />
+                        WhatsApp
+                      </Button>
+                    ) : null}
+
+                    {hasInstagram && !isInactive ? (
+                      <Button size="sm" variant="outline" asChild>
+                        <a
+                          href={getInstagramUrl(prospect.instagram!)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Instagram className="mr-1 h-4 w-4 text-chart-5" />
+                          Instagram
+                        </a>
+                      </Button>
+                    ) : null}
+
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        setSelectedProspect(prospect)
+                        setIsDetailOpen(true)
+                      }}
+                    >
+                      Ver detalle
+                    </Button>
+
+                    {isInactive ? (
+                      <Badge variant="secondary">Sin acciones (inactivo)</Badge>
+                    ) : (!hasWhatsapp && !hasInstagram) ? (
+                      <Badge variant="secondary">No contact method</Badge>
+                    ) : null}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })
+        )}
+      </div>
+
+      <div className="hidden min-w-0 w-full max-w-full overflow-x-auto rounded-xl border bg-card shadow-sm md:block">
         <TooltipProvider>
-          <Table className="min-w-280">
+          <Table className="min-w-[980px] lg:min-w-full">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-12.5">
@@ -292,15 +411,15 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                     aria-label="Seleccionar todos"
                   />
                 </TableHead>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Tipo de negocio</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>WhatsApp</TableHead>
-                <TableHead>Instagram</TableHead>
-                <TableHead>Ubicación</TableHead>
-                <TableHead>Tipo de empresa</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Acciones</TableHead>
+                <TableHead className="whitespace-nowrap">Nombre</TableHead>
+                <TableHead className="hidden whitespace-nowrap lg:table-cell">Tipo de negocio</TableHead>
+                <TableHead className="hidden whitespace-nowrap xl:table-cell">Phone</TableHead>
+                <TableHead className="whitespace-nowrap">WhatsApp</TableHead>
+                <TableHead className="whitespace-nowrap">Instagram</TableHead>
+                <TableHead className="hidden whitespace-nowrap lg:table-cell">Ubicación</TableHead>
+                <TableHead className="hidden whitespace-nowrap xl:table-cell">Tipo de empresa</TableHead>
+                <TableHead className="whitespace-nowrap">Status</TableHead>
+                <TableHead className="whitespace-nowrap">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -332,13 +451,13 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                           aria-label={`Seleccionar ${prospect.name}`}
                         />
                       </TableCell>
-                      <TableCell>{prospect.name}</TableCell>
-                      <TableCell>{prospect.businessType}</TableCell>
-                      <TableCell>{prospect.phone}</TableCell>
-                      <TableCell>{prospect.phone}</TableCell>
+                      <TableCell className="max-w-44 truncate">{prospect.name}</TableCell>
+                      <TableCell className="hidden max-w-44 truncate lg:table-cell">{prospect.businessType}</TableCell>
+                      <TableCell className="hidden xl:table-cell">{prospect.phone}</TableCell>
+                      <TableCell className="max-w-40 truncate">{prospect.phone}</TableCell>
                       <TableCell>{prospect.instagram ? `@${prospect.instagram}` : "-"}</TableCell>
-                      <TableCell>{prospect.location}</TableCell>
-                      <TableCell>{prospect.companyType}</TableCell>
+                      <TableCell className="hidden max-w-44 truncate lg:table-cell">{prospect.location}</TableCell>
+                      <TableCell className="hidden max-w-44 truncate xl:table-cell">{prospect.companyType}</TableCell>
                       <TableCell onClick={(event) => event.stopPropagation()}>
                         <div className="flex items-center gap-2">
                           <Checkbox
@@ -370,7 +489,7 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                         </div>
                       </TableCell>
                       <TableCell onClick={(event) => event.stopPropagation()}>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           {hasWhatsapp && !isInactive ? (
                             <Tooltip>
                               <TooltipTrigger asChild>

@@ -26,7 +26,7 @@ model Dealer {
   id           String   @id @default(cuid())
   name         String
   businessType String
-  phone        String
+  phone        String?
   instagram    String?
   contactMethod String  @default("none") @map("contact_method")
   location     String
