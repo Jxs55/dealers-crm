@@ -4,7 +4,7 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
-import { deleteDealer, updateDealer } from "@/app/actions"
+import { activateDealer, deleteDealer, updateDealer } from "@/app/actions"
 import { OpenWhatsAppButton } from "@/components/open-whatsapp-button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -159,6 +159,25 @@ export function ProspectDetailDialog({
     })
   }
 
+  function handleActivate() {
+    if (!prospect) {
+      return
+    }
+
+    startSaving(async () => {
+      const response = await activateDealer(prospect.id)
+
+      if (!response.success) {
+        toast.error(response.error ?? "No se pudo activar el prospecto.")
+        return
+      }
+
+      toast.success("Prospecto marcado como activo.")
+      onOpenChange(false)
+      router.refresh()
+    })
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
@@ -283,13 +302,19 @@ export function ProspectDetailDialog({
         </div>
 
         <DialogFooter className="gap-2 sm:justify-between">
-          <Button
-            variant="destructive"
-            onClick={handleDelete}
-            disabled={isDeleting || isSaving || !prospect.isActive}
-          >
-            {isDeleting ? "Descartando..." : "Descartar"}
-          </Button>
+          {prospect.isActive ? (
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting || isSaving}
+            >
+              {isDeleting ? "Descartando..." : "Descartar"}
+            </Button>
+          ) : (
+            <Button onClick={handleActivate} disabled={isSaving}>
+              {isSaving ? "Activando..." : "Activar"}
+            </Button>
+          )}
           <div className="flex flex-wrap justify-end gap-2">
             {isEditing ? (
               <>
@@ -306,9 +331,11 @@ export function ProspectDetailDialog({
               </>
             ) : (
               <>
-                <Button variant="outline" onClick={startEditing} disabled={!prospect.isActive}>
-                  Editar
-                </Button>
+                {prospect.isActive ? (
+                  <Button variant="outline" onClick={startEditing}>
+                    Editar
+                  </Button>
+                ) : null}
                 {prospect.phone && prospect.isActive ? (
                   <OpenWhatsAppButton prospect={prospect} templates={templates} />
                 ) : null}

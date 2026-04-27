@@ -167,6 +167,7 @@ export async function createDealer(formData: FormData) {
 
   revalidatePath("/")
   revalidatePath("/posibles-clientes")
+  revalidatePath("/clientes-activos")
 
   return { success: true } satisfies ActionResult
 }
@@ -317,6 +318,37 @@ export async function deleteDealer(id: string) {
     },
     data: {
       isActive: false,
+    },
+  })
+
+  if (result.count === 0) {
+    return { success: false, error: "Prospecto no encontrado." } satisfies ActionResult
+  }
+
+  revalidatePath("/")
+  revalidatePath("/posibles-clientes")
+
+  return { success: true } satisfies ActionResult
+}
+
+export async function activateDealer(id: string) {
+  const session = await getSession()
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Debes iniciar sesión." } satisfies ActionResult
+  }
+
+  if (!id.trim()) {
+    return { success: false, error: "ID de prospecto inválido." } satisfies ActionResult
+  }
+
+  const result = await prisma.dealer.updateMany({
+    where: {
+      id,
+      isActive: false,
+    },
+    data: {
+      isActive: true,
     },
   })
 

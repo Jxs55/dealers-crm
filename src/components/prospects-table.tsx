@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
-import { deleteMultipleDealers, updateDealerContacted } from "@/app/actions"
+import { activateDealer, deleteMultipleDealers, updateDealerContacted } from "@/app/actions"
 import { ProspectDetailDialog } from "@/components/prospect-detail-dialog"
 import { ProspectForm } from "@/components/prospect-form"
 import { ProspectsExportDialog } from "@/components/prospects-export-dialog"
@@ -167,6 +167,20 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
 
       toast.success(`${selectedIds.size} prospecto(s) marcado(s) como inactivos`)
       setSelectedIds(new Set())
+      router.refresh()
+    })
+  }
+
+  const handleActivate = (prospectId: string) => {
+    startUpdating(async () => {
+      const result = await activateDealer(prospectId)
+
+      if (!result.success) {
+        toast.error(result.error || "Error al activar")
+        return
+      }
+
+      toast.success("Prospecto marcado como activo")
       router.refresh()
     })
   }
@@ -384,7 +398,9 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                     </Button>
 
                     {isInactive ? (
-                      <Badge variant="secondary">Sin acciones (inactivo)</Badge>
+                      <Button size="sm" onClick={() => handleActivate(prospect.id)} disabled={isUpdating}>
+                        Activar
+                      </Button>
                     ) : (!hasWhatsapp && !hasInstagram) ? (
                       <Badge variant="secondary">No contact method</Badge>
                     ) : null}
@@ -540,7 +556,9 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                           ) : null}
 
                           {isInactive ? (
-                            <Badge variant="secondary">Sin acciones (inactivo)</Badge>
+                            <Button size="sm" onClick={() => handleActivate(prospect.id)} disabled={isUpdating}>
+                              Activar
+                            </Button>
                           ) : (!hasWhatsapp && !hasInstagram) ? (
                             <Badge variant="secondary">No contact method</Badge>
                           ) : null}
