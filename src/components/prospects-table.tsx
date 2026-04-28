@@ -100,6 +100,10 @@ function resolveDateKey(value: string | null) {
   return toDateKey(parsed)
 }
 
+function formatContactedDate(value: string | null) {
+  return resolveDateKey(value) ?? "-"
+}
+
 export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
   const router = useRouter()
   const [activityFilterMode, setActivityFilterMode] = useState<ActivityFilterMode>("active")
@@ -367,6 +371,7 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                     <p><span className="text-muted-foreground">WhatsApp:</span> {prospect.phone || "-"}</p>
                     <p><span className="text-muted-foreground">Instagram:</span> {prospect.instagram ? `@${prospect.instagram}` : "-"}</p>
                     <p><span className="text-muted-foreground">Ubicación:</span> {prospect.location || "-"}</p>
+                    <p><span className="text-muted-foreground">Contactado el:</span> {formatContactedDate(prospect.contactedAt)}</p>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -473,13 +478,14 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                 <TableHead className="hidden whitespace-nowrap lg:table-cell">Ubicación</TableHead>
                 <TableHead className="hidden whitespace-nowrap xl:table-cell">Tipo de empresa</TableHead>
                 <TableHead className="whitespace-nowrap">Status</TableHead>
+                <TableHead className="whitespace-nowrap">Contactado el</TableHead>
                 <TableHead className="whitespace-nowrap">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredProspects.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
                     No hay prospectos que coincidan con los filtros.
                   </TableCell>
                 </TableRow>
@@ -541,6 +547,9 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
                             <Badge variant="secondary">Pendiente</Badge>
                           )}
                         </div>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {formatContactedDate(prospect.contactedAt)}
                       </TableCell>
                       <TableCell onClick={(event) => event.stopPropagation()}>
                         <div className="flex flex-wrap items-center gap-2">

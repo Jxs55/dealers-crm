@@ -26,6 +26,23 @@ import type { MessageTemplate } from "@/types/message-template"
 import type { Prospect } from "@/types/prospect"
 import { Button } from "./ui/button"
 
+function formatContactedDate(value: string | null) {
+  if (!value) {
+    return "-"
+  }
+
+  const parsed = new Date(value)
+
+  if (Number.isNaN(parsed.getTime())) {
+    return "-"
+  }
+
+  const year = parsed.getFullYear()
+  const month = String(parsed.getMonth() + 1).padStart(2, "0")
+  const day = String(parsed.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
 type ProspectDetailDialogProps = {
   prospect: Prospect | null
   templates: MessageTemplate[]
@@ -284,6 +301,10 @@ export function ProspectDetailDialog({
               </p>
               <p>
                 <span className="font-medium">Tipo de empresa:</span> {prospect.companyType}
+              </p>
+              <p>
+                <span className="font-medium">Contactado el:</span>{" "}
+                {formatContactedDate(prospect.contactedAt)}
               </p>
               <p className="flex items-center gap-2">
                 <span className="font-medium">Estado:</span>

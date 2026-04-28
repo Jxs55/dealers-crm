@@ -38,6 +38,23 @@ type ProspectsExportDialogProps = {
   prospects: Prospect[]
 }
 
+function formatContactedDate(value: string | null) {
+  if (!value) {
+    return ""
+  }
+
+  const parsed = new Date(value)
+
+  if (Number.isNaN(parsed.getTime())) {
+    return ""
+  }
+
+  const year = parsed.getFullYear()
+  const month = String(parsed.getMonth() + 1).padStart(2, "0")
+  const day = String(parsed.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
 function downloadBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob)
   const link = document.createElement("a")
@@ -64,6 +81,7 @@ export function ProspectsExportDialog({ prospects }: ProspectsExportDialogProps)
         Ubicación: prospect.location,
         "Tipo de Empresa": prospect.companyType,
         Contactado: prospect.contacted ? "Sí" : "No",
+        "Contactado el": formatContactedDate(prospect.contactedAt),
       })),
     [prospects]
   )
@@ -107,7 +125,7 @@ export function ProspectsExportDialog({ prospects }: ProspectsExportDialogProps)
 
       let y = 540
       for (const row of exportRows) {
-        const line = `${row.Nombre} | ${row["Tipo de Negocio"]} | ${row.Teléfono} | ${row["Ubicación"]} | ${row["Tipo de Empresa"]} | ${row.Contactado}`
+        const line = `${row.Nombre} | ${row["Tipo de Negocio"]} | ${row.Teléfono} | ${row["Ubicación"]} | ${row["Tipo de Empresa"]} | ${row.Contactado} | ${row["Contactado el"]}`
 
         page.drawText(line.slice(0, 120), {
           x: 40,
@@ -172,12 +190,13 @@ export function ProspectsExportDialog({ prospects }: ProspectsExportDialogProps)
                   <TableHead>Ubicación</TableHead>
                   <TableHead>Tipo de Empresa</TableHead>
                   <TableHead>Contactado</TableHead>
+                  <TableHead>Contactado el</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {exportRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-6 text-center text-muted-foreground">
+                    <TableCell colSpan={10} className="py-6 text-center text-muted-foreground">
                       No hay datos para exportar.
                     </TableCell>
                   </TableRow>
@@ -193,6 +212,7 @@ export function ProspectsExportDialog({ prospects }: ProspectsExportDialogProps)
                       <TableCell>{row["Ubicación"]}</TableCell>
                       <TableCell>{row["Tipo de Empresa"]}</TableCell>
                       <TableCell>{row.Contactado}</TableCell>
+                      <TableCell>{row["Contactado el"]}</TableCell>
                     </TableRow>
                   ))
                 )}
