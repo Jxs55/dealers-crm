@@ -108,12 +108,12 @@ export function ProspectDetailDialog({
     const sanitizedPhone = sanitizePhone(formValues.phone)
 
     if (!sanitizedPhone) {
-      setPhoneError("El teléfono es obligatorio.")
+      setPhoneError("El WhatsApp es obligatorio.")
       return
     }
 
     if (!isValidDominicanPhone(formValues.phone)) {
-      setPhoneError("El teléfono debe ser dominicano y válido.")
+      setPhoneError("El WhatsApp debe ser dominicano y válido.")
       return
     }
 
@@ -212,9 +212,9 @@ export function ProspectDetailDialog({
                 placeholder="Tipo de negocio"
               />
               <Field>
-                <FieldLabel htmlFor="prospectPhone">Teléfono</FieldLabel>
+                <FieldLabel htmlFor="prospectWhatsApp">WhatsApp</FieldLabel>
                 <Input
-                  id="prospectPhone"
+                  id="prospectWhatsApp"
                   value={formValues.phone}
                   onChange={(event) => {
                     setFormValues((previous) => ({
