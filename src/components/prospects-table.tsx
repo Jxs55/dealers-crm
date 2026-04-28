@@ -79,11 +79,33 @@ function getInstagramUrl(handle: string) {
   return `https://instagram.com/${handle}`
 }
 
+function toDateKey(value: Date) {
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, "0")
+  const day = String(value.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+function resolveDateKey(value: string | null) {
+  if (!value) {
+    return null
+  }
+
+  const parsed = new Date(value)
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null
+  }
+
+  return toDateKey(parsed)
+}
+
 export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
   const router = useRouter()
   const [activityFilterMode, setActivityFilterMode] = useState<ActivityFilterMode>("active")
   const [statusFilterMode, setStatusFilterMode] = useState<StatusFilterMode>("all")
   const [contactFilterMode, setContactFilterMode] = useState<ContactFilterMode>("all")
+  const [contactedDate, setContactedDate] = useState("")
   const [search, setSearch] = useState("")
   const [isUpdating, startUpdating] = useTransition()
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null)
@@ -115,14 +137,22 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
         (contactFilterMode === "has-both" && hasWhatsapp && hasInstagram) ||
         (contactFilterMode === "no-contact" && !hasWhatsapp && !hasInstagram)
 
+      const matchesContactedDate =
+        contactedDate.length === 0 ||
+        resolveDateKey(prospect.contactedAt) === contactedDate
+
       const matchesSearch =
         normalizedSearch.length === 0 || prospect.name.toLowerCase().includes(normalizedSearch)
 
       return (
-        matchesActivityFilter && matchesStatusFilter && matchesContactFilter && matchesSearch
+        matchesActivityFilter &&
+        matchesStatusFilter &&
+        matchesContactFilter &&
+        matchesContactedDate &&
+        matchesSearch
       )
     })
-  }, [activityFilterMode, contactFilterMode, prospects, search, statusFilterMode])
+  }, [activityFilterMode, contactFilterMode, contactedDate, prospects, search, statusFilterMode])
 
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredProspects.length) {
@@ -256,7 +286,7 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
           </Button>
         </div>
 
-        <div className="grid w-full gap-2 sm:gap-3 lg:grid-cols-[220px_220px_minmax(220px,1fr)] lg:items-center">
+        <div className="grid w-full gap-2 sm:gap-3 lg:grid-cols-[220px_220px_220px_minmax(220px,1fr)] lg:items-center">
           <Select
             value={activityFilterMode}
             onValueChange={(value) => setActivityFilterMode(value as ActivityFilterMode)}
@@ -286,6 +316,14 @@ export function ProspectsTable({ prospects, templates }: ProspectsTableProps) {
               <SelectItem value="no-contact">No Contact Method</SelectItem>
             </SelectContent>
           </Select>
+
+          <Input
+            type="date"
+            className="w-full"
+            value={contactedDate}
+            onChange={(event) => setContactedDate(event.target.value)}
+            aria-label="Contactados el"
+          />
 
           <Input
             className="w-full"

@@ -44,6 +44,7 @@ export default async function PosiblesClientesPage() {
     phone: prospect.phone ?? "",
     contactMethod: normalizeContactMethod(prospect.contactMethod),
     isActive: prospect.isActive ?? true,
+    contactedAt: prospect.contactedAt ? prospect.contactedAt.toISOString() : null,
   }))
 
   return <ProspectsTable prospects={normalizedProspects} templates={templates} />

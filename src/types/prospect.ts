@@ -10,6 +10,7 @@ export type Prospect = {
   location: string
   companyType: string
   contacted: boolean
+  contactedAt: string | null
   isActive: boolean
 }
 

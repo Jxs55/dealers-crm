@@ -183,17 +183,51 @@ export async function updateDealerContacted(id: string, contacted: boolean) {
     return { success: false, error: "Invalid dealer id." } satisfies ActionResult
   }
 
-  const result = await prisma.dealer.updateMany({
+  const dealer = await prisma.dealer.findFirst({
     where: {
       id,
       isActive: true,
     },
-    data: { contacted },
+    select: {
+      id: true,
+      contacted: true,
+      contactedAt: true,
+    },
   })
 
-  if (result.count === 0) {
+  if (!dealer) {
     return { success: false, error: "Dealer not found." } satisfies ActionResult
   }
+
+  if (dealer.contacted === contacted) {
+    return { success: true } satisfies ActionResult
+  }
+
+  const nextContactedAt = contacted ? new Date() : null
+  const nextContactedById = contacted ? session.user.id : null
+
+  await prisma.$transaction([
+    prisma.dealer.update({
+      where: {
+        id: dealer.id,
+      },
+      data: {
+        contacted,
+        contactedAt: nextContactedAt,
+        contactedById: nextContactedById,
+      },
+    }),
+    prisma.dealerContactAudit.create({
+      data: {
+        dealerId: dealer.id,
+        previousContacted: dealer.contacted,
+        nextContacted: contacted,
+        previousContactedAt: dealer.contactedAt,
+        nextContactedAt,
+        createdById: session.user.id,
+      },
+    }),
+  ])
 
   revalidatePath("/")
   revalidatePath("/posibles-clientes")
@@ -765,19 +799,51 @@ export async function updateDealerStatusForWhatsApp(input: WhatsAppStatusInput) 
 
   const contacted = input.status === "contacted"
 
-  const result = await prisma.dealer.updateMany({
+  const dealer = await prisma.dealer.findFirst({
     where: {
       id: input.dealerId,
       isActive: true,
     },
-    data: {
-      contacted,
+    select: {
+      id: true,
+      contacted: true,
+      contactedAt: true,
     },
   })
 
-  if (result.count === 0) {
+  if (!dealer) {
     return { success: false, error: "Dealer not found." } satisfies ActionResult
   }
+
+  if (dealer.contacted === contacted) {
+    return { success: true } satisfies ActionResult
+  }
+
+  const nextContactedAt = contacted ? new Date() : null
+  const nextContactedById = contacted ? session.user.id : null
+
+  await prisma.$transaction([
+    prisma.dealer.update({
+      where: {
+        id: dealer.id,
+      },
+      data: {
+        contacted,
+        contactedAt: nextContactedAt,
+        contactedById: nextContactedById,
+      },
+    }),
+    prisma.dealerContactAudit.create({
+      data: {
+        dealerId: dealer.id,
+        previousContacted: dealer.contacted,
+        nextContacted: contacted,
+        previousContactedAt: dealer.contactedAt,
+        nextContactedAt,
+        createdById: session.user.id,
+      },
+    }),
+  ])
 
   revalidatePath("/clientes-activos")
   revalidatePath("/posibles-clientes")

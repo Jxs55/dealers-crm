@@ -18,8 +18,10 @@ model User {
   password  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  dealers   Dealer[]
+  dealers   Dealer[] @relation("DealerCreatedBy")
   messageTemplates MessageTemplate[]
+  contactedDealers Dealer[] @relation("DealerContactedBy")
+  dealerContactAudits DealerContactAudit[]
 }
 
 model Dealer {
@@ -32,14 +34,33 @@ model Dealer {
   location     String
   companyType  String
   contacted    Boolean  @default(false)
+  contactedAt  DateTime? @map("contacted_at")
   isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   createdById  String
-  createdBy    User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdBy    User     @relation("DealerCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  contactedById String? @map("contacted_by_id")
+  contactedBy  User?    @relation("DealerContactedBy", fields: [contactedById], references: [id], onDelete: SetNull)
+  contactAudits DealerContactAudit[]
 
   @@unique([phone])
   @@unique([instagram])
+}
+
+model DealerContactAudit {
+  id                 String   @id @default(cuid())
+  dealerId           String
+  dealer             Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  previousContacted  Boolean?
+  nextContacted      Boolean?
+  previousContactedAt DateTime?
+  nextContactedAt    DateTime?
+  createdAt          DateTime @default(now())
+  createdById        String
+  createdBy          User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([dealerId, createdAt])
 }
 
 model MessageTemplate {
